@@ -1,0 +1,14 @@
+# Python virtual env
+.venv/
+venv/
+ENV/
+env/
+
+# Environment variable files
+.env
+.env.*
+*.env
+*.env.*
+
+# Deployment folder
+botdas/deployment/
