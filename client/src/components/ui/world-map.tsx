@@ -11,12 +11,14 @@ interface MapProps {
   }>;
   lineColor?: string;
   theme?: "dark" | "light";
+  onDotClick?: (coordinates: [number, number], name?: string) => void;
 }
 
 export default function WorldMap({
   dots = [],
   lineColor = "#0ea5e9",
   theme = "dark",
+  onDotClick,
 }: MapProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const map = new DottedMap({ height: 100, grid: "diagonal" });
@@ -57,7 +59,7 @@ export default function WorldMap({
       <svg
         ref={svgRef}
         viewBox="0 0 800 400"
-        className="w-full h-full absolute inset-0 pointer-events-none select-none"
+        className="w-full h-full absolute inset-0 select-none"
       >
         {dots.map((dot, i) => {
           const startPoint = projectPoint(dot.start.lat, dot.start.lng);
@@ -95,74 +97,111 @@ export default function WorldMap({
           </linearGradient>
         </defs>
 
-        {dots.map((dot, i) => (
-          <g key={`points-group-${i}`}>
-            <g key={`start-${i}`}>
-              <circle
-                cx={projectPoint(dot.start.lat, dot.start.lng).x}
-                cy={projectPoint(dot.start.lat, dot.start.lng).y}
-                r="2"
-                fill={lineColor}
-              />
-              <circle
-                cx={projectPoint(dot.start.lat, dot.start.lng).x}
-                cy={projectPoint(dot.start.lat, dot.start.lng).y}
-                r="2"
-                fill={lineColor}
-                opacity="0.5"
-              >
-                <animate
-                  attributeName="r"
-                  from="2"
-                  to="8"
-                  dur="1.5s"
-                  begin="0s"
-                  repeatCount="indefinite"
+        {dots.map((dot, i) => {
+          const startPoint = projectPoint(dot.start.lat, dot.start.lng);
+          const endPoint = projectPoint(dot.end.lat, dot.end.lng);
+          const handleClick = () => {
+            if (onDotClick) {
+              // Use the start coordinates (they should be the same as end for single dots)
+              onDotClick([dot.start.lng, dot.start.lat], dot.start.label);
+            }
+          };
+
+          return (
+            <g key={`points-group-${i}`}>
+              <g key={`start-${i}`}>
+                <circle
+                  cx={startPoint.x}
+                  cy={startPoint.y}
+                  r="2"
+                  fill={lineColor}
+                  className={onDotClick ? "cursor-pointer" : ""}
+                  onClick={handleClick}
+                  style={{ pointerEvents: onDotClick ? "auto" : "none" }}
                 />
-                <animate
-                  attributeName="opacity"
-                  from="0.5"
-                  to="0"
-                  dur="1.5s"
-                  begin="0s"
-                  repeatCount="indefinite"
+                <circle
+                  cx={startPoint.x}
+                  cy={startPoint.y}
+                  r="8"
+                  fill="transparent"
+                  className={onDotClick ? "cursor-pointer" : ""}
+                  onClick={handleClick}
+                  style={{ pointerEvents: onDotClick ? "auto" : "none" }}
                 />
-              </circle>
+                <circle
+                  cx={startPoint.x}
+                  cy={startPoint.y}
+                  r="2"
+                  fill={lineColor}
+                  opacity="0.5"
+                  className={onDotClick ? "pointer-events-none" : ""}
+                >
+                  <animate
+                    attributeName="r"
+                    from="2"
+                    to="8"
+                    dur="1.5s"
+                    begin="0s"
+                    repeatCount="indefinite"
+                  />
+                  <animate
+                    attributeName="opacity"
+                    from="0.5"
+                    to="0"
+                    dur="1.5s"
+                    begin="0s"
+                    repeatCount="indefinite"
+                  />
+                </circle>
+              </g>
+              <g key={`end-${i}`}>
+                <circle
+                  cx={endPoint.x}
+                  cy={endPoint.y}
+                  r="2"
+                  fill={lineColor}
+                  className={onDotClick ? "cursor-pointer" : ""}
+                  onClick={handleClick}
+                  style={{ pointerEvents: onDotClick ? "auto" : "none" }}
+                />
+                <circle
+                  cx={endPoint.x}
+                  cy={endPoint.y}
+                  r="8"
+                  fill="transparent"
+                  className={onDotClick ? "cursor-pointer" : ""}
+                  onClick={handleClick}
+                  style={{ pointerEvents: onDotClick ? "auto" : "none" }}
+                />
+                <circle
+                  cx={endPoint.x}
+                  cy={endPoint.y}
+                  r="2"
+                  fill={lineColor}
+                  opacity="0.5"
+                  className={onDotClick ? "pointer-events-none" : ""}
+                >
+                  <animate
+                    attributeName="r"
+                    from="2"
+                    to="8"
+                    dur="1.5s"
+                    begin="0s"
+                    repeatCount="indefinite"
+                  />
+                  <animate
+                    attributeName="opacity"
+                    from="0.5"
+                    to="0"
+                    dur="1.5s"
+                    begin="0s"
+                    repeatCount="indefinite"
+                  />
+                </circle>
+              </g>
             </g>
-            <g key={`end-${i}`}>
-              <circle
-                cx={projectPoint(dot.end.lat, dot.end.lng).x}
-                cy={projectPoint(dot.end.lat, dot.end.lng).y}
-                r="2"
-                fill={lineColor}
-              />
-              <circle
-                cx={projectPoint(dot.end.lat, dot.end.lng).x}
-                cy={projectPoint(dot.end.lat, dot.end.lng).y}
-                r="2"
-                fill={lineColor}
-                opacity="0.5"
-              >
-                <animate
-                  attributeName="r"
-                  from="2"
-                  to="8"
-                  dur="1.5s"
-                  begin="0s"
-                  repeatCount="indefinite"
-                />
-                <animate
-                  attributeName="opacity"
-                  from="0.5"
-                  to="0"
-                  dur="1.5s"
-                  begin="0s"
-                  repeatCount="indefinite"
-                />
-              </circle>
-            </g>
-          </g>
-        ))}
+          );
+        })}
       </svg>
     </div>
   );

@@ -31,9 +31,7 @@ export default function Header() {
           </Link>
         )}
       </div>
-      <Button variant="outline" size="sm">
-        Sign In
-      </Button>
+      <div className="border-gray">HackUTD</div>
     </nav>
   );
 }

@@ -3,6 +3,7 @@ import Hero from "./_components/landing/hero";
 import WorldMapSection from "./_components/landing/world-map-section";
 import Tools from "./_components/landing/tools";
 import Features from "./_components/landing/features";
+import CTA from "./_components/landing/cta";
 
 export default async function Home() {
   return (
@@ -12,6 +13,7 @@ export default async function Home() {
         <Features />
         <WorldMapSection />
         <Tools />
+        <CTA />
       </main>
     </HydrateClient>
   );

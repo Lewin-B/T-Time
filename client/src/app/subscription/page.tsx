@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Mail, Calendar } from "lucide-react";
+import { Check, Mail } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 
@@ -24,7 +24,7 @@ export default function SubscriptionPage() {
       <div className="mx-auto flex w-full max-w-4xl flex-col px-6 py-12 md:px-12">
         <div className="mb-12 text-center">
           <h1 className="text-foreground mb-4 text-3xl font-bold md:text-4xl lg:text-5xl">
-            Stay Informed with Digests
+            Stay Informed
           </h1>
           <p className="text-muted-foreground mx-auto max-w-2xl text-lg md:text-xl">
             Get regular insights about customer sentiment, trends, and happiness
@@ -47,48 +47,12 @@ export default function SubscriptionPage() {
         ) : (
           <>
             {/* Subscription Options */}
-            <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2">
-              <Card
-                className={`cursor-pointer border-2 p-6 transition-all ${
-                  selectedType === "daily"
-                    ? "border-primary bg-primary/10"
-                    : "border-gray-800 bg-secondary/30 hover:border-primary/50"
-                }`}
-                onClick={() => setSelectedType("daily")}
-              >
-                <div className="mb-4 flex items-center gap-3">
-                  <div className="bg-primary/20 flex h-12 w-12 items-center justify-center rounded-lg">
-                    <Calendar className="text-primary h-6 w-6" />
-                  </div>
-                  <h3 className="text-foreground text-xl font-semibold">
-                    Daily Digest
-                  </h3>
-                </div>
-                <p className="text-muted-foreground mb-4 text-sm">
-                  Get a comprehensive summary of customer feedback and sentiment
-                  trends every day
-                </p>
-                <ul className="text-muted-foreground space-y-2 text-sm">
-                  <li className="flex items-center gap-2">
-                    <Check className="text-primary h-4 w-4" />
-                    Daily happiness index updates
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="text-primary h-4 w-4" />
-                    Top sentiment trends
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="text-primary h-4 w-4" />
-                    Key insights and alerts
-                  </li>
-                </ul>
-              </Card>
-
+            <div className="mb-8 flex justify-center">
               <Card
                 className={`cursor-pointer border-2 p-6 transition-all ${
                   selectedType === "weekly"
                     ? "border-primary bg-primary/10"
-                    : "border-gray-800 bg-secondary/30 hover:border-primary/50"
+                    : "bg-secondary/30 hover:border-primary/50 border-gray-800"
                 }`}
                 onClick={() => setSelectedType("weekly")}
               >
@@ -136,7 +100,7 @@ export default function SubscriptionPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your.email@example.com"
-                  className="text-foreground bg-secondary/50 border-gray-800 w-full rounded-lg border px-4 py-3 focus:border-primary focus:outline-none"
+                  className="text-foreground bg-secondary/50 focus:border-primary w-full rounded-lg border border-gray-800 px-4 py-3 focus:outline-none"
                 />
               </div>
               <Button
@@ -144,7 +108,13 @@ export default function SubscriptionPage() {
                 disabled={!selectedType || !email.trim()}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground w-full py-6 text-base"
               >
-                Subscribe to {selectedType === "daily" ? "Daily" : selectedType === "weekly" ? "Weekly" : ""} Digest
+                Subscribe to{" "}
+                {selectedType === "daily"
+                  ? "Daily"
+                  : selectedType === "weekly"
+                    ? "Weekly"
+                    : ""}{" "}
+                Digest
               </Button>
             </Card>
           </>
@@ -153,4 +123,3 @@ export default function SubscriptionPage() {
     </main>
   );
 }
-
