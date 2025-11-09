@@ -14,8 +14,8 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
-# Source .env
-export $(cat .env | xargs)
+# Source .env (ignoring comments)
+export $(grep -v '^#' .env | xargs)
 
 # Check if HF_TOKEN is set
 if [ -z "$HF_TOKEN" ]; then
