@@ -27,9 +27,11 @@ async def load_model():
         "text-generation",
         model=model_id,
         tokenizer=tokenizer,
-        torch_dtype=torch.bfloat16,
-        trust_remote_code=True,
-        device_map="auto"
+        model_kwargs={
+            "torch_dtype": torch.bfloat16,
+            "trust_remote_code": True,
+            "device_map": "auto"
+        }
     )
 
     print("Model loaded!")
