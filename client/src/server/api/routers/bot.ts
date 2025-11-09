@@ -79,19 +79,29 @@ interface PineconeMatch {
 async function searchPinecone(
   queryEmbedding: number[],
   topK = 10,
-  daysBack = 7,
+  daysBack?: number,
+  startDate?: Date,
+  endDate?: Date,
 ): Promise<PineconeMatch[]> {
   const indexName = env.PINECONE_INDEX_NAME ?? "locations";
 
-  // Calculate date range for the last N days
-  const now = new Date();
-  const startDate = new Date(now);
-  startDate.setDate(startDate.getDate() - daysBack);
+  // Calculate date range
+  let startTimestamp: number;
+  let endTimestamp: number;
 
-  // Convert to Unix timestamps (seconds since epoch)
-  // Metadata uses Unix timestamp in seconds, not milliseconds
-  const startTimestamp = Math.floor(startDate.getTime() / 1000);
-  const endTimestamp = Math.floor(now.getTime() / 1000);
+  if (startDate && endDate) {
+    // Use provided date range
+    startTimestamp = Math.floor(startDate.getTime() / 1000);
+    endTimestamp = Math.floor(endDate.getTime() / 1000);
+  } else {
+    // Calculate date range for the last N days (default to 7 if not specified)
+    const now = new Date();
+    const days = daysBack ?? 7;
+    const calculatedStartDate = new Date(now);
+    calculatedStartDate.setDate(calculatedStartDate.getDate() - days);
+    startTimestamp = Math.floor(calculatedStartDate.getTime() / 1000);
+    endTimestamp = Math.floor(now.getTime() / 1000);
+  }
 
   try {
     const index = pc.index(indexName);
@@ -223,6 +233,102 @@ async function analyzeWithGemini(
   }
 }
 
+// Use Gemini to generate chat response with RAG context and conversation history
+async function generateChatResponse(
+  query: string,
+  pineconeResults: PineconeMatch[],
+  conversationHistory: Array<{
+    role: "user" | "assistant";
+    content: string;
+  }> = [],
+): Promise<string> {
+  // Build context from Pinecone results with structured metadata
+  const context = pineconeResults
+    .map((result, idx) => {
+      const metadata = result.metadata ?? {};
+      const locationInfo =
+        metadata.location_city && metadata.location_country
+          ? `${metadata.location_city}, ${metadata.location_country}`
+          : (metadata.location_city ??
+            metadata.location_country ??
+            "Unknown location");
+      const timestamp = metadata.timestamp
+        ? new Date(metadata.timestamp * 1000).toLocaleDateString()
+        : "Unknown date";
+
+      return `[Example ${idx + 1}]
+ID: ${result.id}
+Text: ${metadata.text ?? "Description not available"}
+Location: ${locationInfo}
+Date: ${timestamp}
+Score: ${result.score.toFixed(3)}`;
+    })
+    .join("\n\n");
+
+  // Build conversation history string
+  const conversationHistoryText =
+    conversationHistory.length > 0
+      ? conversationHistory
+          .map((msg) => {
+            const roleLabel = msg.role === "user" ? "User" : "Assistant";
+            return `${roleLabel}: ${msg.content}`;
+          })
+          .join("\n\n")
+      : "No previous conversation history.";
+
+  console.log("Chat Context: ", context);
+  console.log("User Query: ", query);
+  console.log("Conversation History Length: ", conversationHistory.length);
+
+  const prompt = `You are a helpful AI assistant for T-Time, a customer sentiment and happiness metrics analysis platform. Your role is to help users understand customer feedback, sentiment trends, and happiness metrics.
+
+CONVERSATION HISTORY:
+${conversationHistoryText}
+
+CURRENT USER QUERY:
+${query}
+
+CONTEXT FROM RECENT CUSTOMER FEEDBACK DATA:
+${context || "No specific context available from recent data"}
+
+RESPONSE FORMAT REQUIREMENTS:
+- Keep responses SHORT and CONCISE (2-4 sentences maximum for introduction, then use bullet points)
+- Use bullet points (•) to organize information and list metadata
+- Structure responses with clear sections using bullet points
+- When referencing examples from the context, include the example number like "[Example 1]" or "[Example 2]"
+- Group related information together using bullet points
+- List key metadata points (locations, dates, sentiment indicators) as bullet points
+- Be direct and avoid unnecessary verbosity
+
+INSTRUCTIONS:
+1. Use the conversation history to understand the context of the current question
+2. If the user is referring to something from earlier in the conversation, use that context
+3. Use the customer feedback data context to answer the user's question accurately
+4. Structure your response with:
+   - A brief 1-2 sentence answer
+   - Bullet points listing key findings, metadata, or examples
+   - Reference specific examples using "[Example X]" format from the context above
+5. If the context is relevant, reference specific details from it using example numbers
+6. If the context doesn't contain relevant information, provide a brief general response with bullet points about customer sentiment analysis, happiness metrics, or trends
+7. Maintain continuity with the conversation history - reference previous topics if relevant
+8. Focus on actionable insights when possible
+9. When listing locations, sentiment, or trends, use bullet points and reference example numbers
+10. Keep the entire response concise - aim for 50-150 words total
+
+Provide your response:`;
+
+  try {
+    const result = await gemini.generateContent(prompt);
+    const response = result.response;
+    const text = response.text();
+    return text.trim();
+  } catch (error) {
+    console.error("Error generating chat response:", error);
+    // Fallback response
+    return `I understand you're asking about "${query}". While I'm having trouble accessing the latest data right now, I can help you analyze customer sentiment, happiness metrics, and trends. Could you rephrase your question or ask about something more specific?`;
+  }
+}
+
 export const botRouter = createTRPCRouter({
   hello: publicProcedure.query(() => {
     return "hello world";
@@ -267,6 +373,77 @@ export const botRouter = createTRPCRouter({
           { name: "Rio de Janeiro", coordinates: [-43.1729, -22.9068] },
           { name: "New Delhi", coordinates: [77.209, 28.6139] },
         ];
+      }
+    }),
+
+  chat: publicProcedure
+    .input(
+      z.object({
+        message: z.string().min(1, "Message cannot be empty"),
+        conversationHistory: z
+          .array(
+            z.object({
+              role: z.enum(["user", "assistant"]),
+              content: z.string(),
+            }),
+          )
+          .optional()
+          .default([]),
+        startDate: z.string().optional(), // ISO date string
+        endDate: z.string().optional(), // ISO date string
+      }),
+    )
+    .mutation(async ({ input }) => {
+      try {
+        // Step 1: Generate embedding for the user's message using e5-base-v2
+        const queryEmbedding = await generateEmbedding(
+          `query: ${input.message}`,
+        );
+
+        // Step 2: Parse date range if provided
+        const startDate = input.startDate
+          ? new Date(input.startDate)
+          : undefined;
+        const endDate = input.endDate ? new Date(input.endDate) : undefined;
+
+        // Step 3: Search Pinecone for relevant context with date filtering
+        const pineconeResults = await searchPinecone(
+          queryEmbedding,
+          20,
+          undefined, // daysBack - not used if dates provided
+          startDate,
+          endDate,
+        );
+
+        // Step 4: Additional client-side filtering to ensure all results are within date range
+        let filteredResults = pineconeResults;
+        if (startDate && endDate) {
+          const startTimestamp = Math.floor(startDate.getTime() / 1000);
+          const endTimestamp = Math.floor(endDate.getTime() / 1000);
+          filteredResults = pineconeResults.filter((result) => {
+            const metadata = result.metadata;
+            const timestamp = metadata?.timestamp;
+            if (typeof timestamp !== "number") {
+              return false;
+            }
+            return timestamp >= startTimestamp && timestamp <= endTimestamp;
+          });
+        }
+
+        // Step 5: Use Gemini to generate response with RAG context and conversation history
+        const response = await generateChatResponse(
+          input.message,
+          filteredResults,
+          input.conversationHistory,
+        );
+
+        return { response };
+      } catch (error) {
+        console.error("Error in chat endpoint:", error);
+        // Fallback response
+        return {
+          response: `I apologize, but I'm having trouble processing your question right now. Please try again in a moment. If the issue persists, feel free to ask about customer sentiment analysis, happiness metrics, or trends.`,
+        };
       }
     }),
 });
