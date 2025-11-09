@@ -8,7 +8,7 @@ import { index, pgTable, serial, text, timestamp, boolean } from "drizzle-orm/pg
 // Posts example table
 export const posts = pgTable(
   "post",
-  (d) => ({
+  (_d) => ({
     id: serial("id").primaryKey(),
     name: text("name"),
     createdById: text("created_by_id")
@@ -26,7 +26,7 @@ export const posts = pgTable(
 );
 
 // Better Auth core tables
-export const user = pgTable("user", (d) => ({
+export const user = pgTable("user", (_d) => ({
   id: text("id")
     .notNull()
     .primaryKey()
@@ -48,7 +48,7 @@ export const userRelations = relations(user, ({ many }) => ({
 
 export const account = pgTable(
   "account",
-  (d) => ({
+  (_d) => ({
     id: text("id")
       .notNull()
       .primaryKey()
@@ -79,7 +79,7 @@ export const accountRelations = relations(account, ({ one }) => ({
 
 export const session = pgTable(
   "session",
-  (d) => ({
+  (_d) => ({
     id: text("id")
       .notNull()
       .primaryKey()
@@ -105,7 +105,7 @@ export const sessionRelations = relations(session, ({ one }) => ({
 
 export const verification = pgTable(
   "verification",
-  (d) => ({
+  (_d) => ({
     id: text("id")
       .notNull()
       .primaryKey()
