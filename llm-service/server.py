@@ -1,30 +1,58 @@
 """
 Minimal Nemotron-51B server - ONE endpoint
+Uses transformers pipeline (NVIDIA's recommended approach)
 """
 from fastapi import FastAPI
 from pydantic import BaseModel
-from nemo.deploy import NemoQuery
+import torch
+import transformers
 
 app = FastAPI()
 
-# Initialize NemoQuery client
-nq = NemoQuery(url="localhost:8000", model_name="nvidia/Llama-3.1-Nemotron-51B-Instruct")
+# Global pipeline
+pipeline = None
+
+@app.on_event("startup")
+async def load_model():
+    global pipeline
+
+    print("Loading Nemotron-51B...")
+
+    model_id = "nvidia/Llama-3.1-Nemotron-51B-Instruct"
+
+    tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
+    tokenizer.pad_token_id = tokenizer.eos_token_id
+
+    pipeline = transformers.pipeline(
+        "text-generation",
+        model=model_id,
+        tokenizer=tokenizer,
+        torch_dtype=torch.bfloat16,
+        trust_remote_code=True,
+        device_map="auto"
+    )
+
+    print("Model loaded!")
 
 class ChatRequest(BaseModel):
     prompt: str
     max_tokens: int = 200
-    temperature: float = 0.1
+    temperature: float = 0.7
 
 @app.post("/v1/chat/completions")
 async def chat(request: ChatRequest):
-    output = nq.query_llm(
-        prompts=[request.prompt],
-        max_output_token=request.max_tokens,
-        top_k=1,
-        top_p=0.0,
-        temperature=request.temperature
+    messages = [{"role": "user", "content": request.prompt}]
+
+    outputs = pipeline(
+        messages,
+        max_new_tokens=request.max_tokens,
+        temperature=request.temperature,
+        do_sample=True
     )
-    return {"response": output}
+
+    response = outputs[0]["generated_text"][-1]["content"]
+
+    return {"response": response}
 
 if __name__ == "__main__":
     import uvicorn
