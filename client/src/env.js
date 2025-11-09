@@ -17,6 +17,10 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
+    PINECONE_API_KEY: z.string().optional(),
+    PINECONE_INDEX_NAME: z.string().optional(),
+    PINECONE_ENVIRONMENT: z.string().optional(),
+    GEMINI_API_KEY: z.string().optional(),
   },
 
   /**
@@ -39,6 +43,10 @@ export const env = createEnv({
       process.env.BETTER_AUTH_GITHUB_CLIENT_SECRET,
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
+    PINECONE_API_KEY: process.env.PINECONE_API_KEY,
+    PINECONE_INDEX_NAME: process.env.PINECONE_INDEX_NAME,
+    PINECONE_ENVIRONMENT: process.env.PINECONE_ENVIRONMENT,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
