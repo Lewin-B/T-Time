@@ -8,7 +8,7 @@ export default function Features() {
   return (
     <div>
       {/* Features Section */}
-      <section className="border-t border-gray-800 px-6 py-16 md:px-12 md:py-24">
+      <section id="features" className="border-t border-gray-800 px-6 py-16 md:px-12 md:py-24">
         <div className="mx-auto max-w-5xl">
           <h2 className="text-foreground mb-10 text-center text-3xl font-bold md:text-4xl lg:text-5xl">
             Intelligent Features

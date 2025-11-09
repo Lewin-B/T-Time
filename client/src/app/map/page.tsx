@@ -54,7 +54,6 @@ export default function MapPage() {
     }
   };
 
-
   return (
     <main className="flex h-screen w-full flex-col overflow-hidden bg-black">
       {/* Map Section */}
@@ -62,7 +61,7 @@ export default function MapPage() {
         <div className="mx-auto flex h-full w-full max-w-7xl flex-col">
           <div className="mb-4 shrink-0 text-center">
             <h1 className="text-foreground mb-2 text-2xl font-bold md:text-3xl lg:text-4xl">
-              Global Unhappiness Map
+              Global Customer Map
             </h1>
             <p className="text-muted-foreground mx-auto max-w-2xl text-sm md:text-base">
               Analyze real time data around the world
@@ -110,7 +109,9 @@ export default function MapPage() {
                 {/* Positive Sentiment */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Positive Sentiment</CardTitle>
+                    <CardTitle className="text-lg">
+                      Positive Sentiment
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-baseline gap-2">
@@ -124,7 +125,9 @@ export default function MapPage() {
                 {/* Negative Sentiment */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Negative Sentiment</CardTitle>
+                    <CardTitle className="text-lg">
+                      Negative Sentiment
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-baseline gap-2">
@@ -143,16 +146,18 @@ export default function MapPage() {
                   <CardContent>
                     <div className="space-y-3">
                       {locationSentiment.textFeedback.length > 0 ? (
-                        locationSentiment.textFeedback.map((feedback, index) => (
-                          <p
-                            key={index}
-                            className="text-sm text-muted-foreground border-l-2 border-primary pl-3 py-2"
-                          >
-                            {feedback}
-                          </p>
-                        ))
+                        locationSentiment.textFeedback.map(
+                          (feedback, index) => (
+                            <p
+                              key={index}
+                              className="text-muted-foreground border-primary border-l-2 py-2 pl-3 text-sm"
+                            >
+                              {feedback}
+                            </p>
+                          ),
+                        )
                       ) : (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-muted-foreground text-sm">
                           No feedback available for this location.
                         </p>
                       )}
