@@ -20,7 +20,7 @@ async function callLLM(prompt: string): Promise<string> {
   const LLM_SERVICE_URL = env.LLM_SERVICE_URL;
   const USE_GPU_LLM = !!LLM_SERVICE_URL; // Use GPU LLM if URL is configured
   const MAX_RETRIES = 2;
-  const TIMEOUT = 60000; // 60 seconds for LLM inference
+  const TIMEOUT = 120000; // 120 seconds for LLM inference
 
   // Try GPU LLM first if configured
   if (USE_GPU_LLM) {
@@ -29,17 +29,15 @@ async function callLLM(prompt: string): Promise<string> {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), TIMEOUT);
 
-        const response = await fetch(`${LLM_SERVICE_URL}/v1/completions`, {
+        const response = await fetch(`${LLM_SERVICE_URL}/v1/chat/completions`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "nvidia/Llama-3.1-Nemotron-51B-Instruct",
             prompt: prompt,
             max_tokens: 500,
             temperature: 0.3,
-            top_p: 0.95,
           }),
           signal: controller.signal,
         });
@@ -51,12 +49,12 @@ async function callLLM(prompt: string): Promise<string> {
         }
 
         const data = (await response.json()) as {
-          choices: Array<{ text: string }>;
+          response: string;
         };
 
-        if (data.choices?.[0]) {
+        if (data.response) {
           console.log("✓ Used Nemotron GPU LLM");
-          return data.choices[0].text.trim();
+          return data.response.trim();
         }
 
         throw new Error("Invalid response format from LLM service");
