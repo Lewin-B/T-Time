@@ -47,6 +47,19 @@ def create_reddit_metadata(item: Dict[str, Any]) -> Dict[str, Any]:
     if item.get('parent_id'):
         metadata['parent_id'] = item['parent_id']
 
+    # Extract location from text (only adds if state is detected)
+    location = utils.extract_location(item['text'])
+    if location['location_city']:
+        metadata['location_city'] = location['location_city']
+    if location['location_state']:
+        metadata['location_state'] = location['location_state']
+    if location['location_country']:
+        metadata['location_country'] = location['location_country']
+    if location['location_raw']:
+        metadata['location_raw'] = location['location_raw']
+    if location['location_confidence'] is not None:
+        metadata['location_confidence'] = location['location_confidence']
+
     return metadata
 
 

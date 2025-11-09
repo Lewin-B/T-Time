@@ -25,7 +25,7 @@ async def search_sentiment(
 
     Args:
         query: Natural language search query
-        platform: Filter by platform (reddit, threads, consumer-affairs, or all)
+        platform: Filter by platform (reddit, consumer-affairs, pissedconsumer, or all)
         timeframe_days: Limit to posts from last N days (optional)
         sentiment_filter: Filter by sentiment (positive, negative, or None for all)
         limit: Maximum number of results to return

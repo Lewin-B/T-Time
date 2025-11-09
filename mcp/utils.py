@@ -25,12 +25,34 @@ from pinecone import Pinecone
 sentiment_analyzer = None
 embedding_model = None
 embedding_tokenizer = None
+location_extractor = None
 pinecone_client = None
 
 # Model constants (shared across all scrapers)
-SENTIMENT_MODEL = 'distilbert-base-uncased-finetuned-sst-2-english'
+SENTIMENT_MODEL = 'cardiffnlp/twitter-roberta-base-sentiment-latest'  # 3-class: negative/neutral/positive
+SENTIMENT_MODEL_VERSION = 'v3'  # Track model version in metadata (v3 = sentiment + location)
 EMBEDDING_MODEL = 'intfloat/e5-base-v2'  # 768 dimensions
+LOCATION_MODEL = 'dslim/bert-base-NER'  # Named Entity Recognition for locations
 BATCH_SIZE = 96  # Max records per Pinecone batch
+
+# US States for location validation
+US_STATES = {
+    'alabama', 'alaska', 'arizona', 'arkansas', 'california', 'colorado', 'connecticut',
+    'delaware', 'florida', 'georgia', 'hawaii', 'idaho', 'illinois', 'indiana', 'iowa',
+    'kansas', 'kentucky', 'louisiana', 'maine', 'maryland', 'massachusetts', 'michigan',
+    'minnesota', 'mississippi', 'missouri', 'montana', 'nebraska', 'nevada', 'new hampshire',
+    'new jersey', 'new mexico', 'new york', 'north carolina', 'north dakota', 'ohio',
+    'oklahoma', 'oregon', 'pennsylvania', 'rhode island', 'south carolina', 'south dakota',
+    'tennessee', 'texas', 'utah', 'vermont', 'virginia', 'washington', 'west virginia',
+    'wisconsin', 'wyoming', 'dc', 'district of columbia'
+}
+
+US_STATE_ABBR = {
+    'al', 'ak', 'az', 'ar', 'ca', 'co', 'ct', 'de', 'fl', 'ga', 'hi', 'id', 'il', 'in',
+    'ia', 'ks', 'ky', 'la', 'me', 'md', 'ma', 'mi', 'mn', 'ms', 'mo', 'mt', 'ne', 'nv',
+    'nh', 'nj', 'nm', 'ny', 'nc', 'nd', 'oh', 'ok', 'or', 'pa', 'ri', 'sc', 'sd', 'tn',
+    'tx', 'ut', 'vt', 'va', 'wa', 'wv', 'wi', 'wy', 'dc'
+}
 
 
 # ============================================================================
@@ -60,6 +82,20 @@ def init_embedding_model():
         if torch.cuda.is_available():
             embedding_model = embedding_model.to('cuda')
     return embedding_model, embedding_tokenizer
+
+
+def init_location_extractor():
+    """Initialize the location extraction NER pipeline."""
+    global location_extractor
+    if location_extractor is None:
+        print("Loading location extraction model...")
+        location_extractor = pipeline(
+            "ner",
+            model=LOCATION_MODEL,
+            aggregation_strategy="simple",
+            device=0 if torch.cuda.is_available() else -1
+        )
+    return location_extractor
 
 
 def init_pinecone(api_key: str):
@@ -104,13 +140,16 @@ def mean_pooling(model_output, attention_mask):
 
 def analyze_sentiment(text: str) -> Dict[str, Any]:
     """
-    Analyze sentiment of text.
+    Analyze sentiment of text using 3-class model (negative/neutral/positive).
 
     Args:
         text: Input text to analyze
 
     Returns:
-        Dictionary with sentiment label and score
+        Dictionary with sentiment label, score, and sentiment_value
+        - label: 'NEGATIVE', 'NEUTRAL', or 'POSITIVE'
+        - score: Confidence score (0-1)
+        - sentiment_value: Normalized score (-1 to +1)
     """
     analyzer = init_sentiment_analyzer()
 
@@ -120,11 +159,102 @@ def analyze_sentiment(text: str) -> Dict[str, Any]:
 
     result = analyzer(text)[0]
 
+    # Map 3-class labels to sentiment values
+    # CardiffNLP model returns: 'negative', 'neutral', 'positive' (lowercase)
+    label = result['label'].upper()
+    confidence = result['score']
+
+    # Convert to sentiment value scale (-1 to +1)
+    if label == 'POSITIVE':
+        sentiment_value = confidence  # 0.5 to 1.0
+    elif label == 'NEGATIVE':
+        sentiment_value = -confidence  # -1.0 to -0.5
+    else:  # NEUTRAL
+        # Neutral gets a small value based on confidence
+        # High confidence neutral = close to 0
+        # Low confidence neutral = closer to -0.5 or 0.5 (uncertain)
+        sentiment_value = 0.0
+
     return {
-        'label': result['label'],  # POSITIVE or NEGATIVE
-        'score': result['score'],  # Confidence score
-        'sentiment_value': result['score'] if result['label'] == 'POSITIVE' else -result['score']
+        'label': label,  # POSITIVE, NEGATIVE, or NEUTRAL
+        'score': confidence,  # Confidence score
+        'sentiment_value': sentiment_value,  # -1 to +1
+        'model_version': SENTIMENT_MODEL_VERSION
     }
+
+
+def extract_location(text: str) -> Dict[str, Any]:
+    """
+    Extract location information from text using NER.
+
+    Only returns location data if a state is detected (country-only is too broad).
+
+    Args:
+        text: Input text to analyze
+
+    Returns:
+        Dictionary with location fields:
+        - location_city: Detected city name or None
+        - location_state: Detected state name or None
+        - location_country: Detected country or None
+        - location_raw: Original location mention or None
+        - location_confidence: NER confidence score (Python float) or None
+    """
+    extractor = init_location_extractor()
+
+    # Truncate text if too long
+    if len(text) > 500:
+        text = text[:500]
+
+    # Extract named entities
+    entities = extractor(text)
+
+    # Initialize result
+    location = {
+        'location_city': None,
+        'location_state': None,
+        'location_country': None,
+        'location_raw': None,
+        'location_confidence': None
+    }
+
+    # Track if we found a state
+    found_state = False
+
+    # Process location entities
+    for entity in entities:
+        if entity['entity_group'] == 'LOC':
+            loc_text = entity['word'].strip()
+            confidence = float(entity['score'])  # Convert float32 to Python float
+
+            # Check if it's a US state
+            loc_lower = loc_text.lower()
+            if loc_lower in US_STATES or loc_lower in US_STATE_ABBR:
+                location['location_state'] = loc_text.title()
+                location['location_country'] = 'USA'
+                location['location_raw'] = loc_text
+                location['location_confidence'] = confidence
+                found_state = True
+            # Track cities
+            elif len(loc_text) > 2:  # Filter out very short mentions
+                if not location['location_city']:
+                    location['location_city'] = loc_text.title()
+                    if not location['location_raw']:
+                        location['location_raw'] = loc_text
+                        location['location_confidence'] = confidence
+
+    # Only return location data if we found a state
+    # Country-only or city-only is too broad/uncertain
+    if not found_state:
+        return {
+            'location_city': None,
+            'location_state': None,
+            'location_country': None,
+            'location_raw': None,
+            'location_confidence': None
+        }
+
+    return location
 
 
 # ============================================================================

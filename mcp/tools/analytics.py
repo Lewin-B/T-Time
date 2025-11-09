@@ -25,7 +25,7 @@ async def get_sentiment_summary(
     Get aggregated sentiment statistics.
 
     Args:
-        platform: Filter by platform (reddit, threads, consumer-affairs, or all)
+        platform: Filter by platform (reddit, consumer-affairs, pissedconsumer, or all)
         timeframe_days: Number of days to analyze
         group_by: How to group results (platform, day, week, or overall)
 

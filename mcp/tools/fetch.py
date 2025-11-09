@@ -26,7 +26,7 @@ async def fetch_recent_posts(
     Fetch recent posts with optional filtering.
 
     Args:
-        platform: Filter by platform (reddit, threads, consumer-affairs, or all)
+        platform: Filter by platform (reddit, consumer-affairs, pissedconsumer, or all)
         sentiment: Filter by sentiment (positive, negative, or all)
         timeframe_days: Number of days to look back
         post_type: Filter by type (post, comment, reply, review, or None for all)
@@ -94,9 +94,9 @@ async def fetch_recent_posts(
             "rating": metadata.get("rating", None),
             "location": {
                 "city": metadata.get("location_city", ""),
-                "region": metadata.get("location_region", ""),
+                "state": metadata.get("location_state", "") or metadata.get("location_region", ""),
                 "country": metadata.get("location_country", "")
-            } if metadata.get("location_city") else None
+            } if (metadata.get("location_city") or metadata.get("location_state") or metadata.get("location_region")) else None
         })
 
     # Sort results
