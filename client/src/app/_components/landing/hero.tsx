@@ -5,22 +5,7 @@ import { ArrowRight, Zap } from "lucide-react";
 
 export default function Hero() {
   return (
-    <main className="min-h-screen w-full bg-black">
-      {/* Navigation */}
-      <nav className="flex items-center justify-between border-b border-gray-800 px-6 py-4 md:px-12">
-        <div className="flex items-center gap-3">
-          <div className="glow-effect bg-primary text-primary-foreground flex h-10 w-10 items-center justify-center rounded p-2 text-lg font-bold">
-            T
-          </div>
-          <span className="text-foreground hidden text-sm font-semibold sm:inline">
-            Time
-          </span>
-        </div>
-        <Button variant="outline" size="sm">
-          Sign In
-        </Button>
-      </nav>
-
+    <div className="min-h-screen w-full bg-black">
       {/* Hero Section */}
       <section className="px-6 py-16 md:px-12 md:py-24">
         <div className="mx-auto max-w-4xl space-y-6 text-center">
@@ -82,6 +67,6 @@ export default function Hero() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }
