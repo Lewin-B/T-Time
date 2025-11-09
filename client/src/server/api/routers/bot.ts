@@ -15,7 +15,7 @@ export const index = pc.index(env.PINECONE_INDEX_NAME ?? "");
 const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY ?? "");
 export const gemini = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-// LLM Service (Nemotron-340B on GPU, with Gemini fallback)
+// LLM Service (Nemotron on GPU, with Gemini fallback) - Used for METRICS only
 async function callLLM(prompt: string): Promise<string> {
   const LLM_SERVICE_URL = env.LLM_SERVICE_URL;
   const USE_GPU_LLM = !!LLM_SERVICE_URL; // Use GPU LLM if URL is configured
@@ -89,6 +89,22 @@ async function callLLM(prompt: string): Promise<string> {
     console.error("Gemini API failed:", error);
     throw new TRPCError({
       message: "Both LLM services failed",
+      code: "INTERNAL_SERVER_ERROR",
+    });
+  }
+}
+
+// Gemini-only LLM (for chat and map endpoints)
+async function callGemini(prompt: string): Promise<string> {
+  try {
+    console.log("✓ Using Gemini API");
+    const result = await gemini.generateContent(prompt);
+    const response = result.response;
+    return response.text().trim();
+  } catch (error) {
+    console.error("Gemini API failed:", error);
+    throw new TRPCError({
+      message: "Gemini API failed",
       code: "INTERNAL_SERVER_ERROR",
     });
   }
@@ -302,7 +318,7 @@ async function analyzeWithGemini(
   ]`;
 
   try {
-    const text = await callLLM(prompt);
+    const text = await callGemini(prompt);
     console.log("Text: ", text);
     // Extract JSON from response
     const jsonMatch = /\[[\s\S]*\]/.exec(text);
@@ -688,7 +704,7 @@ INSTRUCTIONS:
 Provide your response:`;
 
   try {
-    const text = await callLLM(prompt);
+    const text = await callGemini(prompt);
     return text;
   } catch (error) {
     console.error("Error generating chat response:", error);
