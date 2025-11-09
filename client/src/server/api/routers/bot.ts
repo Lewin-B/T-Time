@@ -11,9 +11,104 @@ const pc = new Pinecone({
 });
 export const index = pc.index(env.PINECONE_INDEX_NAME ?? "");
 
-// Gemini
+// Gemini (fallback)
 const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY ?? "");
 export const gemini = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+// LLM Service (Nemotron on GPU, with Gemini fallback) - Used for METRICS only
+async function callLLM(prompt: string): Promise<string> {
+  const LLM_SERVICE_URL = env.LLM_SERVICE_URL;
+  const USE_GPU_LLM = !!LLM_SERVICE_URL; // Use GPU LLM if URL is configured
+  const MAX_RETRIES = 2;
+  const TIMEOUT = 120000; // 120 seconds for LLM inference
+
+  // Try GPU LLM first if configured
+  if (USE_GPU_LLM) {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), TIMEOUT);
+
+        const response = await fetch(`${LLM_SERVICE_URL}/v1/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            prompt: prompt,
+            max_tokens: 500,
+            temperature: 0.3,
+          }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = (await response.json()) as {
+          response: string;
+        };
+
+        if (data.response) {
+          console.log("✓ Used Nemotron GPU LLM");
+          return data.response.trim();
+        }
+
+        throw new Error("Invalid response format from LLM service");
+      } catch (error) {
+        const isLastAttempt = attempt === MAX_RETRIES;
+        const errorMessage = error instanceof Error ? error.message : String(error);
+
+        console.error(
+          `Nemotron LLM attempt ${attempt}/${MAX_RETRIES} failed:`,
+          errorMessage
+        );
+
+        if (!isLastAttempt) {
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+          continue;
+        }
+
+        // Last attempt failed, fall back to Gemini
+        console.warn("Falling back to Gemini API");
+        break;
+      }
+    }
+  }
+
+  // Fallback to Gemini (or if LLM service not configured)
+  try {
+    console.log("Using Gemini API (fallback)");
+    const result = await gemini.generateContent(prompt);
+    const response = result.response;
+    return response.text().trim();
+  } catch (error) {
+    console.error("Gemini API failed:", error);
+    throw new TRPCError({
+      message: "Both LLM services failed",
+      code: "INTERNAL_SERVER_ERROR",
+    });
+  }
+}
+
+// Gemini-only LLM (for chat and map endpoints)
+async function callGemini(prompt: string): Promise<string> {
+  try {
+    console.log("✓ Using Gemini API");
+    const result = await gemini.generateContent(prompt);
+    const response = result.response;
+    return response.text().trim();
+  } catch (error) {
+    console.error("Gemini API failed:", error);
+    throw new TRPCError({
+      message: "Gemini API failed",
+      code: "INTERNAL_SERVER_ERROR",
+    });
+  }
+}
 
 // Generate embedding using remote VPS embedding service (e5-base-v2 model)
 async function generateEmbedding(text: string): Promise<number[]> {
@@ -223,9 +318,7 @@ async function analyzeWithGemini(
   ]`;
 
   try {
-    const result = await gemini.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
+    const text = await callGemini(prompt);
     console.log("Text: ", text);
     // Extract JSON from response
     const jsonMatch = /\[[\s\S]*\]/.exec(text);
@@ -344,9 +437,7 @@ Change values should be percentages (can be negative)
 If data is insufficient, use reasonable estimates based on the available feedback.`;
 
   try {
-    const result = await gemini.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
+    const text = await callLLM(prompt);
     console.log("Metrics Response: ", text);
 
     // Extract JSON from response
@@ -613,10 +704,8 @@ INSTRUCTIONS:
 Provide your response:`;
 
   try {
-    const result = await gemini.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
-    return text.trim();
+    const text = await callGemini(prompt);
+    return text;
   } catch (error) {
     console.error("Error generating chat response:", error);
     // Fallback response

@@ -11,6 +11,7 @@ import {
   SheetTitle,
 } from "~/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { LoadingSpinner } from "~/components/ui/loading-spinner";
 
 export default function MapPage() {
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
@@ -69,9 +70,7 @@ export default function MapPage() {
           </div>
           <div className="flex min-h-0 flex-1 items-center justify-center">
             {isLoading ? (
-              <div className="text-primary text-lg">
-                Analzying user feedback...
-              </div>
+              <LoadingSpinner size="lg" text="Analyzing user feedback..." />
             ) : (
               <div className="h-full w-full">
                 <WorldMap
@@ -101,8 +100,8 @@ export default function MapPage() {
 
           <div className="mt-6 space-y-4">
             {isLoadingSentiment ? (
-              <div className="text-muted-foreground py-8 text-center">
-                Loading sentiment data...
+              <div className="py-8">
+                <LoadingSpinner size="md" text="Loading sentiment data..." />
               </div>
             ) : locationSentiment ? (
               <>
