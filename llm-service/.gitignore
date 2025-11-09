@@ -1,0 +1,8 @@
+# Environment files
+.env
+
+# Docker volumes
+huggingface_cache/
+
+# Logs
+*.log
