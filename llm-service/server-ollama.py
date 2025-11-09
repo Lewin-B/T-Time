@@ -5,6 +5,14 @@ ONE endpoint, no complexity
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import requests
+import logging
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -17,7 +25,11 @@ class ChatRequest(BaseModel):
 
 @app.post("/v1/chat/completions")
 async def chat(request: ChatRequest):
+    logger.info(f"Received request - prompt: {request.prompt[:50]}...")
+
     try:
+        logger.info(f"Calling Ollama at {OLLAMA_URL}")
+
         response = requests.post(
             OLLAMA_URL,
             json={
@@ -31,12 +43,17 @@ async def chat(request: ChatRequest):
             },
             timeout=120
         )
+
+        logger.info(f"Ollama response status: {response.status_code}")
         response.raise_for_status()
 
         result = response.json()
+        logger.info(f"Generated response length: {len(result.get('response', ''))}")
+
         return {"response": result["response"]}
 
     except Exception as e:
+        logger.error(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")

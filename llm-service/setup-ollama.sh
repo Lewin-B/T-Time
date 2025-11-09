@@ -7,6 +7,11 @@ echo "================================================"
 echo "OLLAMA + NEMOTRON SETUP"
 echo "================================================"
 
+# Install Python dependencies
+echo ""
+echo "Installing Python dependencies..."
+pip3 install -r requirements.txt
+
 # Install Ollama
 echo ""
 echo "Installing Ollama..."
@@ -25,8 +30,5 @@ echo ""
 echo "Nemotron-70B is ready!"
 echo ""
 echo "Start the server with:"
-echo "  ollama serve"
-echo ""
-echo "Or run interactively:"
-echo "  ollama run nemotron"
+echo "  ./deploy-ollama.sh"
 echo ""

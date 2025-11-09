@@ -7,13 +7,14 @@ echo "================================================"
 echo "STARTING OLLAMA NEMOTRON SERVER"
 echo "================================================"
 
-# Start Ollama in background
-echo ""
-echo "Starting Ollama service..."
-ollama serve > /dev/null 2>&1 &
-OLLAMA_PID=$!
-
-sleep 3
+# Check if Ollama is already running
+if pgrep -x "ollama" > /dev/null; then
+    echo "✓ Ollama already running"
+else
+    echo "Starting Ollama service..."
+    ollama serve > /dev/null 2>&1 &
+    sleep 3
+fi
 
 # Start FastAPI wrapper
 echo ""
@@ -23,17 +24,17 @@ API_PID=$!
 
 echo ""
 echo "================================================"
-echo "SERVICES RUNNING"
+echo "SERVER RUNNING"
 echo "================================================"
 echo ""
-echo "Ollama: PID $OLLAMA_PID (port 11434)"
-echo "API: PID $API_PID (port 8001)"
+echo "FastAPI: PID $API_PID (port 8001)"
+echo "Ollama: port 11434"
 echo ""
 echo "Test with:"
 echo "  curl -X POST http://localhost:8001/v1/chat/completions \\"
 echo "    -H 'Content-Type: application/json' \\"
 echo "    -d '{\"prompt\": \"Hello!\", \"max_tokens\": 100}'"
 echo ""
-echo "Stop with:"
-echo "  kill $OLLAMA_PID $API_PID"
+echo "Stop FastAPI with:"
+echo "  kill $API_PID"
 echo ""
