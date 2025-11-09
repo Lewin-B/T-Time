@@ -23,6 +23,14 @@ from google.adk.agents import Agent
 from datetime import datetime
 from pathlib import Path
 
+# Database imports
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    PSYCOPG2_AVAILABLE = True
+except ImportError:
+    PSYCOPG2_AVAILABLE = False
+
 
 def index_pinecone(product_name: str, related_keywords: Optional[List[str]] = None, timeframe_days: int = 30, limit: int = 20) -> dict:
     """Queries Pinecone index for customer sentiment data related to a specific T-Mobile product.
@@ -125,6 +133,40 @@ def index_pinecone(product_name: str, related_keywords: Optional[List[str]] = No
         }
 
 
+def fetch_email_list_from_db() -> List[str]:
+    """Fetches all email addresses from the email_list table in PostgreSQL.
+    
+    Returns:
+        List[str]: List of email addresses, or empty list if error
+    """
+    if not PSYCOPG2_AVAILABLE:
+        return []
+    
+    if not config.DATABASE_URL:
+        return []
+    
+    try:
+        # Parse DATABASE_URL and connect to PostgreSQL
+        # DATABASE_URL format: postgresql://user:password@host:port/database
+        conn = psycopg2.connect(config.DATABASE_URL)
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # Query the email_list table
+        cursor.execute("SELECT emails FROM email_list ORDER BY created_at ASC")
+        rows = cursor.fetchall()
+        
+        # Extract email addresses
+        emails = [row['emails'] for row in rows]
+        
+        cursor.close()
+        conn.close()
+        
+        return emails
+    except Exception as e:
+        print(f"Error fetching email list from database: {str(e)}")
+        return []
+
+
 def send_weekly_digest_email(digest_content: str, save_to_file: bool = True) -> dict:
     """Sends the weekly digest via email using Resend.
     
@@ -143,13 +185,26 @@ def send_weekly_digest_email(digest_content: str, save_to_file: bool = True) -> 
             "error_message": "Resend library not installed. Install with: pip install resend"
         }
     
-    if not all([config.EMAIL_RECIPIENT, config.EMAIL_SENDER, config.RESEND_API_KEY]):
+    if not all([config.EMAIL_SENDER, config.RESEND_API_KEY]):
         return {
             "status": "error",
-            "error_message": "Email configuration incomplete. Please set EMAIL_RECIPIENT, EMAIL_SENDER, and RESEND_API_KEY environment variables."
+            "error_message": "Email configuration incomplete. Please set EMAIL_SENDER and RESEND_API_KEY environment variables."
         }
     
     try:
+        # Fetch email list from database
+        email_recipients = fetch_email_list_from_db()
+        
+        # Fallback to config.EMAIL_RECIPIENT if database is empty or unavailable
+        if not email_recipients and config.EMAIL_RECIPIENT:
+            email_recipients = [config.EMAIL_RECIPIENT]
+        
+        if not email_recipients:
+            return {
+                "status": "error",
+                "error_message": "No email recipients found. Please ensure the email_list table has entries or set EMAIL_RECIPIENT environment variable."
+            }
+        
         # Initialize Resend
         resend.api_key = config.RESEND_API_KEY
         
@@ -173,12 +228,8 @@ def send_weekly_digest_email(digest_content: str, save_to_file: bool = True) -> 
                 attachment_bytes = f.read()
                 attachment_content = base64.b64encode(attachment_bytes).decode('utf-8')
         
-        # Send email via Resend
-        params = {
-            "from": config.EMAIL_SENDER,
-            "to": [config.EMAIL_RECIPIENT],
-            "subject": f"T-Mobile Product Sentiment Weekly Digest - {datetime.now().strftime('%Y-%m-%d')}",
-            "html": f"""<html>
+        # Prepare email content
+        email_html = f"""<html>
 <body>
 <h2>Weekly T-Mobile Product Sentiment Digest</h2>
 <p><strong>Generated:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
@@ -186,8 +237,9 @@ def send_weekly_digest_email(digest_content: str, save_to_file: bool = True) -> 
 <hr>
 <p><em>This is an automated weekly digest from the T-Mobile Product Sentiment Analysis Agent.</em></p>
 </body>
-</html>""",
-            "text": f"""Weekly T-Mobile Product Sentiment Digest
+</html>"""
+        
+        email_text = f"""Weekly T-Mobile Product Sentiment Digest
 
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
@@ -196,30 +248,59 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 ---
 This is an automated weekly digest from the T-Mobile Product Sentiment Analysis Agent.
 """
-        }
         
-        # Add attachment if file was saved
-        if attachment_content and filepath:
-            params["attachments"] = [
-                {
-                    "filename": filepath.name,
-                    "content": attachment_content
+        # Send email to all recipients
+        email_results = []
+        for recipient in email_recipients:
+            try:
+                params = {
+                    "from": config.EMAIL_SENDER,
+                    "to": [recipient],
+                    "subject": f"T-Mobile Product Sentiment Weekly Digest - {datetime.now().strftime('%Y-%m-%d')}",
+                    "html": email_html,
+                    "text": email_text
                 }
-            ]
+                
+                # Add attachment if file was saved
+                if attachment_content and filepath:
+                    params["attachments"] = [
+                        {
+                            "filename": filepath.name,
+                            "content": attachment_content
+                        }
+                    ]
+                
+                email = resend.Emails.send(params)
+                email_id = email.get('id', 'unknown')
+                email_results.append({
+                    "recipient": recipient,
+                    "email_id": email_id,
+                    "status": "success"
+                })
+            except Exception as e:
+                email_results.append({
+                    "recipient": recipient,
+                    "status": "error",
+                    "error": str(e)
+                })
         
-        email = resend.Emails.send(params)
-        email_id = email.get('id', 'unknown')
+        # Count successful sends
+        successful_sends = [r for r in email_results if r.get("status") == "success"]
+        failed_sends = [r for r in email_results if r.get("status") == "error"]
         
-        result_message = f"Digest emailed successfully to {config.EMAIL_RECIPIENT}"
+        result_message = f"Digest emailed successfully to {len(successful_sends)} recipient(s)"
+        if failed_sends:
+            result_message += f", {len(failed_sends)} failed"
         if filepath:
             result_message += f" and saved to {filepath}"
-        result_message += f" (Email ID: {email_id})"
         
         return {
-            "status": "success",
+            "status": "success" if successful_sends else "error",
             "message": result_message,
-            "email_id": email_id,
-            "recipient": config.EMAIL_RECIPIENT,
+            "total_recipients": len(email_recipients),
+            "successful_sends": len(successful_sends),
+            "failed_sends": len(failed_sends),
+            "email_results": email_results,
             "filepath": str(filepath) if filepath else None
         }
         

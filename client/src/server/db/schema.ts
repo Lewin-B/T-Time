@@ -120,3 +120,15 @@ export const verification = pgTable(
   }),
   (t) => [index("verification_identifier_idx").on(t.identifier)],
 );
+
+// Email list for subscriptions
+export const emailList = pgTable(
+  "email_list",
+  (_d) => ({
+    emails: text("emails").notNull().unique().primaryKey(),
+    createdAt: timestamp("created_at")
+      .defaultNow()
+      .notNull(),
+  }),
+  (t) => [index("email_list_emails_idx").on(t.emails)],
+);

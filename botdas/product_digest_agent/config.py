@@ -23,9 +23,12 @@ PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
 PINECONE_INDEX_NAME = os.getenv('PINECONE_INDEX_NAME', 'ttime-sentiment')
 
 # Email Configuration (using Resend)
-EMAIL_RECIPIENT = os.getenv('EMAIL_RECIPIENT')
+EMAIL_RECIPIENT = os.getenv('EMAIL_RECIPIENT')  # Fallback if database is empty
 EMAIL_SENDER = os.getenv('EMAIL_SENDER')  # Must be a verified domain in Resend
 RESEND_API_KEY = os.getenv('RESEND_API_KEY')
+
+# Database Configuration
+DATABASE_URL = os.getenv('DATABASE_URL')  # PostgreSQL connection string
 
 # Agent Instructions
 AGENT_INSTRUCTION = """You are an expert analyst specializing in T-Mobile product sentiment analysis.

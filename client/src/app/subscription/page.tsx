@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import { Check, Mail } from "lucide-react";
-import { Button } from "~/components/ui/button";
-import { Card } from "~/components/ui/card";
 
 type SubscriptionType = "daily" | "weekly" | null;
 
@@ -11,16 +9,52 @@ export default function SubscriptionPage() {
   const [selectedType, setSelectedType] = useState<SubscriptionType>(null);
   const [email, setEmail] = useState("");
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubscribe = () => {
-    if (!selectedType || !email.trim()) return;
-    // TODO: Implement actual subscription logic
-    setIsSubscribed(true);
-    setTimeout(() => setIsSubscribed(false), 3000);
+  const handleSubscribe = async () => {
+    console.log("Subscribe button clicked", { selectedType, email });
+
+    if (!selectedType || !email.trim()) {
+      setError("Please select a subscription type and enter your email.");
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.exec(email)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      // Simulate API call - replace with actual API call
+      console.log("Subscribing with:", {
+        email: email.trim(),
+        type: selectedType,
+      });
+
+      // Simulate network delay
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Simulate success
+      setIsSubscribed(true);
+      setTimeout(() => {
+        setIsSubscribed(false);
+        setEmail("");
+        setSelectedType(null);
+      }, 3000);
+    } catch (err) {
+      console.error("Subscription error:", err);
+      setError("Failed to subscribe. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <main className="flex min-h-[calc(100vh-73px)] w-full flex-col bg-black">
+    <main className="flex min-h-screen w-full flex-col bg-black">
       <div className="mx-auto flex w-full max-w-4xl flex-col px-6 py-12 md:px-12">
         <div className="mb-12 text-center">
           <h1 className="text-foreground mb-4 text-3xl font-bold md:text-4xl lg:text-5xl">
@@ -33,7 +67,7 @@ export default function SubscriptionPage() {
         </div>
 
         {isSubscribed ? (
-          <Card className="bg-primary/20 border-primary/50 mx-auto max-w-md p-8 text-center">
+          <div className="bg-primary/20 border-primary/50 mx-auto max-w-md rounded-lg border p-8 text-center">
             <div className="bg-primary/20 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
               <Check className="text-primary h-8 w-8" />
             </div>
@@ -43,13 +77,13 @@ export default function SubscriptionPage() {
             <p className="text-muted-foreground">
               You&apos;ll receive {selectedType} digests at {email}
             </p>
-          </Card>
+          </div>
         ) : (
           <>
             {/* Subscription Options */}
             <div className="mb-8 flex justify-center">
-              <Card
-                className={`cursor-pointer border-2 p-6 transition-all ${
+              <div
+                className={`cursor-pointer rounded-lg border-2 p-6 transition-all ${
                   selectedType === "weekly"
                     ? "border-primary bg-primary/10"
                     : "bg-secondary/30 hover:border-primary/50 border-gray-800"
@@ -82,11 +116,11 @@ export default function SubscriptionPage() {
                     Actionable recommendations
                   </li>
                 </ul>
-              </Card>
+              </div>
             </div>
 
             {/* Email Input */}
-            <Card className="bg-secondary/30 border-gray-800 p-6">
+            <div className="bg-secondary/30 rounded-lg border border-gray-800 p-6">
               <div className="mb-4">
                 <label
                   htmlFor="email"
@@ -98,25 +132,34 @@ export default function SubscriptionPage() {
                   type="email"
                   id="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError(null);
+                  }}
                   placeholder="your.email@example.com"
                   className="text-foreground bg-secondary/50 focus:border-primary w-full rounded-lg border border-gray-800 px-4 py-3 focus:outline-none"
                 />
+                {error && (
+                  <p className="text-destructive mt-2 text-sm">{error}</p>
+                )}
               </div>
-              <Button
+              <button
+                type="button"
                 onClick={handleSubscribe}
-                disabled={!selectedType || !email.trim()}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground w-full py-6 text-base"
+                disabled={!selectedType || !email.trim() || isLoading}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground w-full rounded-lg py-3 text-base font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Subscribe to{" "}
-                {selectedType === "daily"
-                  ? "Daily"
-                  : selectedType === "weekly"
-                    ? "Weekly"
-                    : ""}{" "}
-                Digest
-              </Button>
-            </Card>
+                {isLoading
+                  ? "Subscribing..."
+                  : `Subscribe to ${
+                      selectedType === "daily"
+                        ? "Daily"
+                        : selectedType === "weekly"
+                          ? "Weekly"
+                          : ""
+                    } Digest`}
+              </button>
+            </div>
           </>
         )}
       </div>
