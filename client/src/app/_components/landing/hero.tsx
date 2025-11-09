@@ -5,7 +5,7 @@ import { ArrowRight, Zap } from "lucide-react";
 
 export default function Hero() {
   return (
-    <main className="min-h-screen w-full bg-black">
+    <div className="w-full bg-black">
       {/* Navigation */}
       <nav className="flex items-center justify-between border-b border-gray-800 px-6 py-4 md:px-12">
         <div className="flex items-center gap-3">
@@ -82,6 +82,6 @@ export default function Hero() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }
