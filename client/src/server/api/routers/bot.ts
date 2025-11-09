@@ -163,38 +163,40 @@ async function analyzeWithGemini(
   const context = pineconeResults
     .map((result, idx) => {
       const metadata = result.metadata ?? {};
-      const description =
-        typeof metadata.description === "string"
-          ? metadata.description
-          : "No description";
-      return `${idx + 1}. ${metadata.text ?? "Location"} - ${description} (country: ${metadata.location_country ?? "Not available"}, region: ${metadata.location_region ?? "Not available"})`;
+
+      return `${idx + 1}. ${metadata.text ?? "Description not available"} (country: ${metadata.location_country ?? "Not available"}, region: ${metadata.location_region ?? "Not available"})`;
     })
     .join("\n");
 
+  console.log("Context: ", context);
+
   const prompt = `You are analyzing location data from the last week. Based on the following context and the query "${query}", identify areas of possible interest.
 
-Context from search results:
-${context || "No specific context available"}
+  Context from search results:
+  ${context || "No specific context available"}
 
-Please return a JSON array of locations that are relevant to the query. Each location should have:
-- name: The location name (city or region)
-- coordinates: [longitude, latitude] as an array of two numbers
+  Please return a JSON array of locations that are relevant to the query. Each location should have:
+  - name: The location name (city or region)
+  - coordinates: [longitude, latitude] as an array of two numbers
 
-Focus on locations that:
-1. Are mentioned in the context
-2. Are relevant to the query about areas of interest from the last week
-3. Have valid geographic coordinates
+  Focus on locations that:
+  1. Are mentioned in the context
+  2. Are relevant to the query about areas of interest from the last week
+  3. Have valid geographic coordinates
 
-Return ONLY a valid JSON array, no other text. Example format:
-[
-  {"name": "New York", "coordinates": [-74.006, 40.7128]},
-  {"name": "London", "coordinates": [-0.1278, 51.5074]}
-]`;
+  LOCATIONS MUST BE RELEVANT TO THE CONTEXT
+
+  Return ONLY a valid JSON array, no other text. Example format:
+  [
+    {"name": "New York", "coordinates": [-74.006, 40.7128]},
+    {"name": "London", "coordinates": [-0.1278, 51.5074]}
+  ]`;
 
   try {
     const result = await gemini.generateContent(prompt);
     const response = result.response;
     const text = response.text();
+    console.log("Text: ", text);
     // Extract JSON from response
     const jsonMatch = /\[[\s\S]*\]/.exec(text);
     if (jsonMatch) {
@@ -241,7 +243,7 @@ export const botRouter = createTRPCRouter({
         const queryEmbedding = await generateEmbedding(`query: ${input.query}`);
 
         // Step 2: Search Pinecone for relevant locations
-        const pineconeResults = await searchPinecone(queryEmbedding, 20);
+        const pineconeResults = await searchPinecone(queryEmbedding, 50);
 
         // Step 3: Use Gemini to analyze results and extract location information
         const locations = await analyzeWithGemini(input.query, pineconeResults);

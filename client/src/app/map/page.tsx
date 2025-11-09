@@ -3,26 +3,36 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "~/components/ui/button";
-import {
-  ComposableMap,
-  Geographies,
-  Geography,
-  Marker,
-} from "react-simple-maps";
+import WorldMap from "~/components/ui/world-map";
 import { api } from "~/trpc/react";
-
-const geoUrl =
-  "https://raw.githubusercontent.com/deldersveld/topojson/master/world-countries.json";
 
 export default function MapPage() {
   // Fetch markers from tRPC endpoint
   const { data: markers = [], isLoading } = api.post.getMapMarkers.useQuery({
-    query: "Negative reviews relating to specific locations",
+    query: "Negative and unhappy reviews",
   });
+
+  // Convert markers to dots format for WorldMap component
+  // Each marker becomes a dot with start and end at the same location
+  const dots = markers.map(({ name, coordinates }) => ({
+    start: {
+      lat: coordinates[1], // latitude (second element)
+      lng: coordinates[0], // longitude (first element)
+      label: name,
+    },
+    end: {
+      lat: coordinates[1], // same location
+      lng: coordinates[0], // same location
+      label: name,
+    },
+  }));
+
+  console.log("dots: ", dots);
+
   return (
-    <main className="min-h-screen w-full bg-black">
+    <main className="flex h-screen w-full flex-col overflow-hidden bg-black">
       {/* Navigation */}
-      <nav className="flex items-center justify-between border-b border-gray-800 px-6 py-4 md:px-12">
+      <nav className="flex shrink-0 items-center justify-between border-b border-gray-800 px-6 py-3 md:px-12">
         <Link href="/">
           <Button variant="ghost" size="sm" className="text-foreground">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -40,92 +50,24 @@ export default function MapPage() {
       </nav>
 
       {/* Map Section */}
-      <section className="px-6 py-12 md:px-12 md:py-16">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-8 text-center">
-            <h1 className="text-foreground mb-4 text-4xl font-bold md:text-5xl lg:text-6xl">
+      <section className="flex flex-1 flex-col overflow-hidden px-6 py-4 md:px-12">
+        <div className="mx-auto flex h-full w-full max-w-7xl flex-col">
+          <div className="mb-4 shrink-0 text-center">
+            <h1 className="text-foreground mb-2 text-2xl font-bold md:text-3xl lg:text-4xl">
               Global Network Map
             </h1>
-            <p className="text-muted-foreground mx-auto max-w-2xl text-lg md:text-xl">
+            <p className="text-muted-foreground mx-auto max-w-2xl text-sm md:text-base">
               Explore our worldwide connections and real-time data flow
             </p>
           </div>
-          <div className="overflow-hidden rounded-lg border border-gray-800 bg-black">
-            <ComposableMap
-              projectionConfig={{
-                scale: 147,
-                center: [0, 20],
-              }}
-              className="w-full"
-              style={{
-                width: "100%",
-                height: "auto",
-              }}
-            >
-              <Geographies geography={geoUrl}>
-                {({ geographies }) =>
-                  geographies.map((geo) => (
-                    <Geography
-                      key={geo.rsmKey}
-                      geography={geo}
-                      fill="#1a1a1a"
-                      stroke="#2a2a2a"
-                      strokeWidth={0.5}
-                      style={{
-                        default: {
-                          fill: "#1a1a1a",
-                          stroke: "#2a2a2a",
-                          outline: "none",
-                        },
-                        hover: {
-                          fill: "#2a2a2a",
-                          stroke: "#e20074",
-                          strokeWidth: 1,
-                          outline: "none",
-                        },
-                        pressed: {
-                          fill: "#2a2a2a",
-                          stroke: "#e20074",
-                          strokeWidth: 1,
-                          outline: "none",
-                        },
-                      }}
-                    />
-                  ))
-                }
-              </Geographies>
-              {isLoading ? (
-                <Marker coordinates={[0, 0]}>
-                  <text
-                    x={0}
-                    y={0}
-                    textAnchor="middle"
-                    fill="#e20074"
-                    fontSize={14}
-                  >
-                    Loading markers...
-                  </text>
-                </Marker>
-              ) : (
-                markers.map(({ name, coordinates }) => (
-                  <Marker key={name} coordinates={coordinates}>
-                    <circle
-                      r={4}
-                      fill="#e20074"
-                      stroke="#ffffff"
-                      strokeWidth={1}
-                      className="animate-pulse"
-                    />
-                    <circle
-                      r={8}
-                      fill="#e20074"
-                      opacity={0.3}
-                      className="animate-ping"
-                    />
-                  </Marker>
-                ))
-              )}
-            </ComposableMap>
+          <div className="flex min-h-0 flex-1 items-center justify-center">
+            {isLoading ? (
+              <div className="text-primary text-lg">Loading markers...</div>
+            ) : (
+              <div className="h-full w-full">
+                <WorldMap dots={dots} lineColor="#e20074" theme="dark" />
+              </div>
+            )}
           </div>
         </div>
       </section>
