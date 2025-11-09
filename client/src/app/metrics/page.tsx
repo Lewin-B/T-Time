@@ -4,6 +4,7 @@ import { useState } from "react";
 import { TrendingUp, TrendingDown, Minus, BarChart3, Calendar, X } from "lucide-react";
 import { Card } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
+import { LoadingCard } from "~/components/ui/loading-spinner";
 import { api } from "~/trpc/react";
 
 interface MetricCardProps {
@@ -177,15 +178,15 @@ export default function MetricsPage() {
           </div>
         )}
 
-        {/* Loading State */}
-        {isLoading && (
-          <div className="mb-8 text-center">
-            <div className="text-primary text-lg">Analyzing customer feedback...</div>
+        {/* Loading State - Full Screen */}
+        {isLoading ? (
+          <div className="flex min-h-[60vh] items-center justify-center">
+            <LoadingCard text="Analyzing customer feedback..." className="w-full max-w-md" />
           </div>
-        )}
-
-        {/* Key Metrics Grid */}
-        <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        ) : (
+          <>
+            {/* Key Metrics Grid */}
+            <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           <MetricCard
             title="Overall Happiness Index"
             value={metrics.overallHappiness?.value ?? 0}
@@ -268,6 +269,8 @@ export default function MetricsPage() {
             </div>
           </div>
         </Card>
+          </>
+        )}
       </div>
     </main>
   );
