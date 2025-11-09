@@ -21,7 +21,7 @@ export default function Tools() {
   ];
 
   return (
-    <section className="w-full border-t border-gray-800 bg-black px-6 py-16 md:px-12 md:py-24">
+    <section className="min-h-screen w-full border-t border-gray-800 bg-black px-6 py-16 md:px-12 md:py-24">
       <div className="mx-auto max-w-6xl">
         <div className="mb-12 text-center">
           <h2 className="text-foreground mb-4 text-3xl font-bold md:text-4xl lg:text-5xl">

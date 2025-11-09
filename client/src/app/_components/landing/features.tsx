@@ -8,7 +8,10 @@ export default function Features() {
   return (
     <div>
       {/* Features Section */}
-      <section id="features" className="border-t border-gray-800 px-6 py-16 md:px-12 md:py-24">
+      <section
+        id="features"
+        className="h-screen border-t border-gray-800 px-6 py-16 md:px-12 md:py-24"
+      >
         <div className="mx-auto max-w-5xl">
           <h2 className="text-foreground mb-10 text-center text-3xl font-bold md:text-4xl lg:text-5xl">
             Intelligent Features
@@ -17,7 +20,7 @@ export default function Features() {
           <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
             {/* Feature 1 - Chatbot Interface */}
             <Link href="/chat" className="block">
-              <Card className="bg-secondary/30 hover:border-primary/50 border-gray-800 p-8 transition-all hover:scale-105 cursor-pointer">
+              <Card className="bg-secondary/30 hover:border-primary/50 cursor-pointer border-gray-800 p-8 transition-all hover:scale-105">
                 <div className="bg-primary/20 mb-5 flex h-12 w-12 items-center justify-center rounded">
                   <Brain className="text-primary h-6 w-6" />
                 </div>
@@ -32,7 +35,7 @@ export default function Features() {
 
             {/* Feature 2 - Subscription/Digest */}
             <Link href="/subscription" className="block">
-              <Card className="bg-secondary/30 hover:border-accent/50 border-gray-800 p-8 transition-all hover:scale-105 cursor-pointer">
+              <Card className="bg-secondary/30 hover:border-accent/50 cursor-pointer border-gray-800 p-8 transition-all hover:scale-105">
                 <div className="bg-accent/20 mb-5 flex h-12 w-12 items-center justify-center rounded">
                   <MessageSquare className="text-accent h-6 w-6" />
                 </div>
@@ -40,14 +43,14 @@ export default function Features() {
                   Multi-Channel
                 </h3>
                 <p className="text-muted-foreground text-base">
-                  Subscribe to daily and weekly digests of customer insights
+                  Subscribe to weekly digests of customer insights
                 </p>
               </Card>
             </Link>
 
             {/* Feature 3 - Happiness Index Metrics */}
             <Link href="/metrics" className="block">
-              <Card className="bg-secondary/30 hover:border-primary/50 border-gray-800 p-8 transition-all hover:scale-105 cursor-pointer">
+              <Card className="bg-secondary/30 hover:border-primary/50 cursor-pointer border-gray-800 p-8 transition-all hover:scale-105">
                 <div className="bg-primary/20 mb-5 flex h-12 w-12 items-center justify-center rounded">
                   <Zap className="text-primary h-6 w-6" />
                 </div>

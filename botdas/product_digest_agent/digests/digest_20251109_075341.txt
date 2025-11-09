@@ -1,0 +1,44 @@
+Weekly T-Mobile Product Sentiment Digest
+Generated: 2025-11-09 07:53:41
+================================================================================
+
+**Subject: T-Mobile iPhone Product Sentiment Weekly Digest (Last 7 Days)**
+
+**Executive Summary:**
+The sentiment analysis for T-Mobile iPhone users over the last 7 days indicates a predominantly neutral sentiment (80%), with a notable positive sentiment of 20% and no negative feedback. The average sentiment score is 0.12, suggesting a generally favorable but not strongly enthusiastic perception. Discussions largely revolved around device upgrades, eSIM technology, and Apple's satellite services.
+
+**Overall Sentiment Trends:**
+*   **Positive Sentiment:** 20%
+*   **Neutral Sentiment:** 80%
+*   **Negative Sentiment:** 0%
+
+**Key Customer Feedback Themes:**
+*   **Device Upgrades/Trade-ins**: Customers are actively discussing trading in older iPhone models (e.g., iPhone 14, 15) for newer versions (e.g., iPhone 17 Pro Max), often in relation to promotional credits and costs.
+*   **eSIM Technology**: There are mentions of iPhones from the 14 series onwards being eSIM-only, indicating customer awareness and discussion around this technology.
+*   **Satellite Services**: Apple's free satellite service for iPhone 14 and 15 owners, as well as T-Mobile's text-to-911 availability off-grid, are topics of interest.
+*   **General iPhone/Apple Mentions**: Some comments express general positive sentiment towards iPhones or Apple products.
+
+**Notable Complaints and Praises:**
+
+*   **Praises:**
+    *   "I still have 2 of the 2nd Gen iPhone 2G. Both in working condition." (Highlighting iPhone durability)
+    *   "Apple, yes." (General positive affirmation towards Apple)
+    *   "iPhones and Samsung galaxy should be I think. Thanks!" (Positive sentiment regarding device compatibility)
+
+*   **Complaints:**
+    *   No explicit complaints were identified in the provided data for the last 7 days.
+
+**Sentiment Scores and Trends:**
+*   The average sentiment score across all analyzed posts is **0.115** (on a scale of -1 to 1, where 1 is highly positive).
+*   The sentiment has been consistently neutral to positive over the last week, with no observed negative trends.
+
+**Platform Breakdown:**
+*   All 20 identified posts were sourced from **Reddit**.
+
+**Actionable Insights:**
+*   The complete absence of negative sentiment for iPhones within the T-Mobile context over the past week is a strong positive indicator.
+*   T-Mobile could capitalize on the positive discussions surrounding Apple's satellite features and iPhone durability in its marketing campaigns.
+*   It is advisable to continue monitoring customer conversations around iPhone trade-in and upgrade programs, as these are recurring themes that influence customer satisfaction and retention.
+
+**Data Sources and Citations:**
+Pinecone Index, queried for "Iphones", "iPhone 15", "iOS", "Apple" within the last 7 days.

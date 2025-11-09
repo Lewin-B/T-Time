@@ -1,0 +1,53 @@
+Weekly T-Mobile Product Sentiment Digest
+Generated: 2025-11-09 07:48:57
+================================================================================
+
+**Weekly T-Mobile Product Sentiment Digest (Last 7 Days)**
+
+**I. Executive Summary**
+This weekly digest summarizes customer sentiment for T-Mobile products and services over the last 7 days, aggregated from platforms like Reddit and Consumer Affairs. Overall sentiment is predominantly neutral (61.25%), with a significant portion of negative feedback (25%) and a smaller positive segment (13.75%).
+
+Key areas of concern revolve around customer service experiences, including long wait times, issues with in-store upgrades, and difficulties resolving account problems. There are also mentions of T-Mobile "ripping off" customers and server issues. On the positive side, users praise the effectiveness of T-Force support via social media, stable 5G network performance in some areas, and favorable trade-in deals for Go5G Plus plans when handled through Apple.
+
+**II. Key Themes and Topics**
+*   **Customer Service Challenges**: Persistent issues with phone support, in-store experiences, and reliance on the T-Life app for self-service.
+*   **Network Performance**: Generally neutral to positive feedback on 5G speeds and coverage, with some specific positive mentions of T-Mobile 5G Home Internet and Inseego hotspots.
+*   **Plan and Promotions (Go5G Plus)**: Discussions around plan benefits, trade-in values, and eligibility for discounts.
+*   **General T-Mobile Perception**: Mixed views, with some strong negative opinions about the company overall.
+
+**III. Sentiment Breakdown by Product/Service**
+
+**A. T-Mobile (General Sentiment)**
+*   **Overall Sentiment**: 10% Positive, 60% Neutral, 30% Negative
+*   **Notable Complaints**: "Stay away from T-Mobile", "T-mobile is ripping off his customers", "T mobile servers are down right now".
+*   **Notable Praises**: Positive sentiment around the availability of free trials.
+*   **Platforms**: Reddit
+
+**B. Go5G Plus**
+*   **Overall Sentiment**: 10% Positive, 80% Neutral, 10% Negative
+*   **Notable Complaints**: "Go 5G Plus is dead.", issues with upgrade discounts for existing customers not being as favorable.
+*   **Notable Praises**: Users appreciate getting the same discounts as T-Mobile offers through Apple, with additional benefits like waived activation fees and unlocked phones. Good value for multiple lines on Go5G Next.
+*   **Platforms**: Reddit
+
+**C. Network (5G, Coverage, Speed)**
+*   **Overall Sentiment**: 15% Positive, 80% Neutral, 5% Negative
+*   **Notable Complaints**: Some sarcastic comments about T-Mobile's network being "far ahead it’s laughable" (implying the opposite).
+*   **Notable Praises**: Positive reports of 5G internet speeds (e.g., "125 up" in NE Louisiana), good coverage and bandwidth with GoogleFi (which runs on T-Mobile's network), and effective 5G USB-C powered hotspots like Inseego MiFi X Pro 5G.
+*   **Platforms**: Reddit
+
+**D. Customer Service (Support, Experience, Wait Times)**
+*   **Overall Sentiment**: 20% Positive, 25% Neutral, 55% Negative
+*   **Notable Complaints**: "so many bad experiences at an experience store", "Phone support is terrible, a bunch of oversea eployees that run off scripts", "drained and tired from being in the store for 3 hours", "Customer support has been getting worse every year", "Horrible service, they hold you on the phone for hours", "They’ll rob you blind. They won’t send bill and when you try to cancel they’ll give you the runaround".
+*   **Notable Praises**: "T-Force Support is amazing if you contact them thru Facebook or X. Real humans in the US", "unprecedented positive experience when I reached out to the Facebook team", "awesome, quick to respond and have taken care of my issues every time" (referring to T-Force).
+*   **Platforms**: Reddit, Consumer Affairs
+
+**IV. Actionable Insights**
+*   **Improve Phone and In-Store Customer Service**: The high negative sentiment in customer service indicates a critical area for improvement. Investigate reasons for long wait times, perceived unhelpfulness of phone support, and in-store upgrade difficulties.
+*   **Promote T-Force**: Leverage the positive feedback for T-Force by encouraging customers to use this channel for complex issues, while simultaneously working to bring the quality of phone and in-store support up to par.
+*   **Address Billing and Account Transparency**: Complaints about being "robbed blind" and not receiving bills highlight a need for clearer communication and improved billing practices.
+*   **Clarify Go5G Plus Promotions**: Ensure transparency and consistency in trade-in values and discounts, especially for existing customers and across different purchase channels (T-Mobile vs. Apple).
+*   **Highlight Network Strengths**: Continue to market and demonstrate strong 5G performance, particularly for home internet and mobile hotspot solutions, given the positive feedback in these areas.
+
+**V. Data Sources**
+*   Reddit
+*   Consumer Affairs

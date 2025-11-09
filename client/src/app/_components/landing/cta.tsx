@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 
 export default function CTA() {
   return (
-    <div className="bg-background">
+    <div className="bg-background flex min-h-screen items-center justify-center">
       {/* Final CTA */}
       <section className="border-t border-gray-800 px-6 py-16 md:px-12 md:py-24">
         <div className="mx-auto max-w-3xl space-y-8 text-center">
