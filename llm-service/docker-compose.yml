@@ -2,11 +2,11 @@ version: '3.8'
 
 services:
   nemotron-51b:
-    image: vllm/vllm-openai:v0.6.3.post1
+    build: .
     container_name: nemotron-51b
     restart: unless-stopped
 
-    # GPU configuration - use all 4 A100 GPUs
+    # GPU configuration - use all available GPUs
     deploy:
       resources:
         reservations:
@@ -15,7 +15,7 @@ services:
               count: all
               capabilities: [gpu]
 
-    # Port mapping - expose vLLM OpenAI-compatible API
+    # Port mapping - expose OpenAI-compatible API
     ports:
       - "8001:8000"
 
@@ -29,18 +29,7 @@ services:
     # Environment variables
     environment:
       - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN}
-      - CUDA_VISIBLE_DEVICES=0
-
-    # vLLM startup command for 80GB A100 SXM4 GPU
-    # Nemotron-51B-Instruct with older vLLM version (v0.6.3.post1)
-    # Perfect fit: ~30GB VRAM usage, 50GB headroom
-    command: >
-      --model nvidia/Llama-3.1-Nemotron-51B-Instruct
-      --max-model-len 8192
-      --gpu-memory-utilization 0.90
-      --trust-remote-code
-      --dtype auto
-      --disable-log-requests
+      - HF_HOME=/root/.cache/huggingface
 
     # Health check
     healthcheck:
