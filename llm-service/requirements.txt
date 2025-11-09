@@ -1,7 +1,7 @@
 fastapi
 uvicorn[standard]
 torch
-transformers
+transformers==4.44.2
 accelerate
 pydantic
 huggingface-hub
