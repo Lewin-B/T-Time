@@ -10,7 +10,9 @@ env2.allowLocalModels = true;
 env2.allowRemoteModels = true;
 
 // Pinecone
-const pc = new Pinecone({ apiKey: env.PINECONE_API_KEY ?? "" });
+const pc = new Pinecone({
+  apiKey: env.PINECONE_API_KEY ?? "",
+});
 export const index = pc.index(env.PINECONE_INDEX_NAME ?? "");
 
 // Gemini
@@ -18,19 +20,19 @@ const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY ?? "");
 export const gemini = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 // Initialize embedding model (e5-base-v2)
-let embeddingPipeline = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let embeddingPipeline: any = null;
 const getEmbeddingModel = async () => {
   try {
     if (embeddingPipeline === null) {
-      console.log("Check");
       embeddingPipeline = await pipeline(
         "feature-extraction",
         "Xenova/e5-base-v2",
       );
     }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return embeddingPipeline;
-  } catch (error) {
-    console.error("Error: ", error);
+  } catch {
     throw new TRPCError({
       message: "Failed to initialize model",
       code: "INTERNAL_SERVER_ERROR",
@@ -41,19 +43,36 @@ const getEmbeddingModel = async () => {
 // Generate embedding using e5-base-v2 model
 async function generateEmbedding(text: string): Promise<number[]> {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const model = await getEmbeddingModel();
-    const output = await model(text, {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    const output = (await model(text, {
       pooling: "mean",
       normalize: true,
-    });
+    })) as { data: Float32Array | Float64Array | number[] };
     return Array.from(output.data);
   } catch (error) {
-    console.error("Error: ", error);
     throw new TRPCError({
-      message: `Failed to initialize model: ${error}`,
+      message: `Failed to generate embedding: ${error instanceof Error ? error.message : String(error)}`,
       code: "INTERNAL_SERVER_ERROR",
     });
   }
+}
+
+interface PineconeMatch {
+  id: string;
+  score: number;
+  metadata?: {
+    timestamp?: number;
+    text?: string;
+    location_country?: string;
+    location_region?: string;
+    location_city?: string;
+    lat?: number;
+    lng?: number;
+    name?: string;
+    [key: string]: unknown;
+  };
 }
 
 // Search Pinecone for relevant locations with date filtering
@@ -61,7 +80,7 @@ async function searchPinecone(
   queryEmbedding: number[],
   topK = 10,
   daysBack = 7,
-): Promise<any[]> {
+): Promise<PineconeMatch[]> {
   const indexName = env.PINECONE_INDEX_NAME ?? "locations";
 
   // Calculate date range for the last N days
@@ -73,10 +92,6 @@ async function searchPinecone(
   // Metadata uses Unix timestamp in seconds, not milliseconds
   const startTimestamp = Math.floor(startDate.getTime() / 1000);
   const endTimestamp = Math.floor(now.getTime() / 1000);
-
-  console.log(
-    `Date filter: ${startDate.toISOString()} (${startTimestamp}) to ${now.toISOString()} (${endTimestamp})`,
-  );
 
   try {
     const index = pc.index(indexName);
@@ -95,8 +110,7 @@ async function searchPinecone(
       },
     });
 
-    const matches = queryResponse.matches || [];
-    console.log(`Pinecone filter returned ${matches.length} matches`);
+    const matches = (queryResponse.matches ?? []) as PineconeMatch[];
 
     // If filter returned results, use them
     if (matches.length > 0) {
@@ -107,11 +121,7 @@ async function searchPinecone(
     // 1. No results in date range (legitimate)
     // 2. Filter field not indexed or filter syntax wrong (fallback needed)
     // Fall through to query without filter and filter client-side
-    console.log(
-      "Pinecone filter returned 0 results, falling back to client-side filtering",
-    );
-  } catch (error) {
-    console.error("Pinecone search error with date filter:", error);
+  } catch {
     // Filter syntax error or field not available - fall back to client-side filtering
   }
 
@@ -124,12 +134,8 @@ async function searchPinecone(
       includeMetadata: true,
     });
 
-    console.log(
-      `Pinecone query without filter returned ${queryResponse.matches?.length ?? 0} matches`,
-    );
-
     // Filter results client-side by date
-    const filtered = (queryResponse.matches || []).filter((match) => {
+    const filtered = (queryResponse.matches ?? []).filter((match) => {
       const metadata = match.metadata;
       if (!metadata?.timestamp) {
         return false;
@@ -140,14 +146,10 @@ async function searchPinecone(
       const inRange = timestamp >= startTimestamp && timestamp <= endTimestamp;
 
       return inRange;
-    });
+    }) as PineconeMatch[];
 
-    console.log(
-      `Client-side filter returned ${filtered.length} matches (from ${queryResponse.matches?.length ?? 0} total)`,
-    );
     return filtered;
-  } catch (fallbackError) {
-    console.error("Pinecone fallback search error:", fallbackError);
+  } catch {
     return [];
   }
 }
@@ -155,18 +157,19 @@ async function searchPinecone(
 // Use Gemini to analyze and extract location information
 async function analyzeWithGemini(
   query: string,
-  pineconeResults: any[],
+  pineconeResults: PineconeMatch[],
 ): Promise<Array<{ name: string; coordinates: [number, number] }>> {
   // Build context from Pinecone results
-  console.log("Lewin: ", pineconeResults);
   const context = pineconeResults
     .map((result, idx) => {
       const metadata = result.metadata ?? {};
-      return `${idx + 1}. ${metadata.text ?? "Location"} - ${metadata.description ?? "No description"} (country: ${metadata.location_country ?? "Not available"}, region: ${metadata.location_region ?? "Not available"})`;
+      const description =
+        typeof metadata.description === "string"
+          ? metadata.description
+          : "No description";
+      return `${idx + 1}. ${metadata.text ?? "Location"} - ${description} (country: ${metadata.location_country ?? "Not available"}, region: ${metadata.location_region ?? "Not available"})`;
     })
     .join("\n");
-
-  console.log("context: ", context);
 
   const prompt = `You are analyzing location data from the last week. Based on the following context and the query "${query}", identify areas of possible interest.
 
@@ -188,36 +191,33 @@ Return ONLY a valid JSON array, no other text. Example format:
   {"name": "London", "coordinates": [-0.1278, 51.5074]}
 ]`;
 
-  console.log("prompt: ", prompt);
-
   try {
     const result = await gemini.generateContent(prompt);
-    console.log("Result: ", result);
     const response = result.response;
-    console.log("Response: ", response);
     const text = response.text();
-    console.log("Test: ", text);
     // Extract JSON from response
     const jsonMatch = /\[[\s\S]*\]/.exec(text);
     if (jsonMatch) {
-      const locations = JSON.parse(jsonMatch[0]);
+      const locations = JSON.parse(jsonMatch[0]) as Array<{
+        name: string;
+        coordinates: [number, number];
+      }>;
       return locations;
     }
 
     // Fallback: return empty array
     return [];
-  } catch (error) {
-    console.error("Gemini analysis error:", error);
+  } catch {
     // Fallback: extract locations from Pinecone results
     return pineconeResults
       .filter((result) => result.metadata?.lat && result.metadata?.lng)
-      .map((result) => ({
-        name: result.metadata.name ?? "Unknown Location",
-        coordinates: [
-          result.metadata.lng as number,
-          result.metadata.lat as number,
-        ],
-      }));
+      .map((result) => {
+        const metadata = result.metadata!;
+        return {
+          name: metadata.name ?? metadata.location_city ?? "Unknown Location",
+          coordinates: [metadata.lng!, metadata.lat!] as [number, number],
+        };
+      });
   }
 }
 
@@ -251,9 +251,7 @@ export const botRouter = createTRPCRouter({
           name: location.name,
           coordinates: location.coordinates,
         }));
-      } catch (error) {
-        console.error("Error in getMapMarkers:", error);
-
+      } catch {
         // Fallback: Return default locations if RAG fails
         return [
           { name: "New York", coordinates: [-74.006, 40.7128] },
