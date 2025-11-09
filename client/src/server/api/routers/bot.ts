@@ -629,24 +629,106 @@ export const botRouter = createTRPCRouter({
         // Step 3: Use Gemini to analyze results and extract location information
         const locations = await analyzeWithGemini(input.query, pineconeResults);
 
-        // Step 4: Return markers in the format expected by the map
-        return locations.map((location) => ({
-          name: location.name,
-          coordinates: location.coordinates,
-        }));
+        // Step 4: Match locations with Pinecone results to get country/region
+        // Create a map of location names to their country/region from Pinecone results
+        const locationMap = new Map<
+          string,
+          { country?: string; region?: string; city?: string }
+        >();
+
+        pineconeResults.forEach((result) => {
+          const metadata = result.metadata;
+          const city = metadata?.location_city;
+          const country = metadata?.location_country;
+          const region = metadata?.location_region;
+
+          if (city || country || region) {
+            const key = city ?? country ?? region ?? "";
+            if (key && !locationMap.has(key)) {
+              locationMap.set(key, { country, region, city });
+            }
+          }
+        });
+
+        // Step 5: Return markers with country and region when available
+        return locations.map((location) => {
+          // Try to find matching location data from Pinecone results
+          const locationData =
+            locationMap.get(location.name) ??
+            Array.from(locationMap.values())[0] ??
+            {};
+
+          return {
+            name: location.name,
+            coordinates: location.coordinates,
+            country: locationData.country,
+            region: locationData.region,
+            city: locationData.city,
+          };
+        });
       } catch {
         // Fallback: Return default locations if RAG fails
         return [
-          { name: "New York", coordinates: [-74.006, 40.7128] },
-          { name: "London", coordinates: [-0.1278, 51.5074] },
-          { name: "Tokyo", coordinates: [139.6503, 35.6762] },
-          { name: "San Francisco", coordinates: [-122.4194, 37.7749] },
-          { name: "Sydney", coordinates: [151.2093, -33.8688] },
-          { name: "Singapore", coordinates: [103.8198, 1.3521] },
-          { name: "Moscow", coordinates: [37.6173, 55.7558] },
-          { name: "Beijing", coordinates: [116.4074, 39.9042] },
-          { name: "Rio de Janeiro", coordinates: [-43.1729, -22.9068] },
-          { name: "New Delhi", coordinates: [77.209, 28.6139] },
+          {
+            name: "New York",
+            coordinates: [-74.006, 40.7128],
+            country: "USA",
+            region: "New York",
+          },
+          {
+            name: "London",
+            coordinates: [-0.1278, 51.5074],
+            country: "United Kingdom",
+            region: "England",
+          },
+          {
+            name: "Tokyo",
+            coordinates: [139.6503, 35.6762],
+            country: "Japan",
+            region: "Kanto",
+          },
+          {
+            name: "San Francisco",
+            coordinates: [-122.4194, 37.7749],
+            country: "USA",
+            region: "California",
+          },
+          {
+            name: "Sydney",
+            coordinates: [151.2093, -33.8688],
+            country: "Australia",
+            region: "New South Wales",
+          },
+          {
+            name: "Singapore",
+            coordinates: [103.8198, 1.3521],
+            country: "Singapore",
+            region: "Singapore",
+          },
+          {
+            name: "Moscow",
+            coordinates: [37.6173, 55.7558],
+            country: "Russia",
+            region: "Moscow",
+          },
+          {
+            name: "Beijing",
+            coordinates: [116.4074, 39.9042],
+            country: "China",
+            region: "Beijing",
+          },
+          {
+            name: "Rio de Janeiro",
+            coordinates: [-43.1729, -22.9068],
+            country: "Brazil",
+            region: "Rio de Janeiro",
+          },
+          {
+            name: "New Delhi",
+            coordinates: [77.209, 28.6139],
+            country: "India",
+            region: "Delhi",
+          },
         ];
       }
     }),
@@ -781,6 +863,108 @@ export const botRouter = createTRPCRouter({
           neutralSentiment: { value: 0, change: 0, trend: "neutral" as const },
           responseTime: { value: "0h", change: 0, trend: "neutral" as const },
           resolutionRate: { value: 0, change: 0, trend: "neutral" as const },
+        };
+      }
+    }),
+
+  getLocationSentiment: publicProcedure
+    .input(
+      z.object({
+        label: z.string(),
+      }),
+    )
+    .query(async ({ input }) => {
+      try {
+        // Step 1: Generate embedding for location-based query using the label
+        const queryEmbedding = await generateEmbedding(
+          `Customer feedback and reviews from ${input.label}`,
+        );
+
+        // Step 2: Search Pinecone for relevant feedback data
+        const pineconeResults = await searchPinecone(queryEmbedding, 50);
+
+        // Step 3: Filter results by matching location via feedback text or location_region
+        const labelLower = input.label.toLowerCase();
+        const filteredResults = pineconeResults.filter((result) => {
+          const metadata = result.metadata;
+          const feedbackText = (metadata?.text ?? "").toLowerCase();
+          const region = (metadata?.location_region ?? "").toLowerCase();
+
+          // Match if feedback text contains the location label OR location_region matches
+          return (
+            feedbackText.includes(labelLower) ||
+            region.includes(labelLower) ||
+            labelLower.includes(region)
+          );
+        });
+
+        // Step 4: Calculate positive and negative sentiment
+        const positiveKeywords = [
+          "good",
+          "great",
+          "excellent",
+          "happy",
+          "satisfied",
+          "love",
+          "amazing",
+          "perfect",
+          "wonderful",
+        ];
+        const negativeKeywords = [
+          "bad",
+          "terrible",
+          "awful",
+          "hate",
+          "disappointed",
+          "frustrated",
+          "poor",
+          "worst",
+          "horrible",
+        ];
+
+        let positiveCount = 0;
+        let negativeCount = 0;
+
+        filteredResults.forEach((result) => {
+          const text = (result.metadata?.text ?? "").toLowerCase();
+          const hasPositive = positiveKeywords.some((keyword) =>
+            text.includes(keyword),
+          );
+          const hasNegative = negativeKeywords.some((keyword) =>
+            text.includes(keyword),
+          );
+
+          if (hasPositive && !hasNegative) {
+            positiveCount++;
+          } else if (hasNegative && !hasPositive) {
+            negativeCount++;
+          }
+        });
+
+        const total = filteredResults.length;
+        const positiveSentiment =
+          total > 0 ? Math.round((positiveCount / total) * 100) : 0;
+        const negativeSentiment =
+          total > 0 ? Math.round((negativeCount / total) * 100) : 0;
+
+        // Step 5: Extract text feedback (limit to 10 most recent)
+        const textFeedback = filteredResults
+          .slice(0, 10)
+          .map((result) => result.metadata?.text ?? "No text available")
+          .filter((text) => text !== "No text available");
+
+        return {
+          positiveSentiment,
+          negativeSentiment,
+          textFeedback,
+        };
+      } catch (error) {
+        console.error("Error in getLocationSentiment endpoint:", error);
+        // Return default values if extraction fails
+        return {
+          positiveSentiment: 0,
+          negativeSentiment: 0,
+          textFeedback: [],
         };
       }
     }),
