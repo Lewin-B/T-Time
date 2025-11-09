@@ -1,7 +1,4 @@
+nemo_toolkit[all]
 fastapi
 uvicorn[standard]
-torch
-transformers==4.44.2
-accelerate
 pydantic
-huggingface-hub

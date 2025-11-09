@@ -1,77 +1,26 @@
 """
-FastAPI server for Nemotron-51B with OpenAI-compatible API
-Simpler alternative to vLLM - uses transformers directly
+Simple Nemotron-51B server using NeMo
+OpenAI-compatible API
 """
 
-import os
 import time
-from typing import Optional, List, Dict, Any
-from contextlib import asynccontextmanager
-
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from huggingface_hub import login
+from typing import List, Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
+import uvicorn
 
-# Global model and tokenizer
+# Import NeMo
+try:
+    from nemo.collections.nlp.models.language_modeling.megatron_gpt_model import MegatronGPTModel
+    from nemo.collections.nlp.modules.common.transformer.text_generation import LengthParam, SamplingParam
+except ImportError:
+    print("ERROR: NeMo not installed properly")
+    raise
+
+# Global model
 model = None
-tokenizer = None
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Load model on startup, cleanup on shutdown"""
-    global model, tokenizer
-
-    # Login to Hugging Face
-    hf_token = os.getenv("HUGGING_FACE_HUB_TOKEN")
-    if hf_token:
-        print("Logging in to Hugging Face...")
-        login(token=hf_token)
-    else:
-        print("WARNING: No HF token found, may not be able to download gated models")
-
-    print("Loading Nemotron-51B model...")
-    model_name = "nvidia/Llama-3.1-Nemotron-51B-Instruct"
-
-    # Load tokenizer
-    print("Loading tokenizer...")
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_name,
-        trust_remote_code=True,
-        use_fast=True
-    )
-
-    # Load model with BF16 precision
-    print("Loading model (this will take 2-3 minutes)...")
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",  # Automatically distribute across GPUs
-        trust_remote_code=True,
-        low_cpu_mem_usage=True
-    )
-
-    model.eval()  # Set to evaluation mode
-    print(f"Model loaded successfully on device: {model.device}")
-    print(f"Model memory footprint: {model.get_memory_footprint() / 1e9:.2f} GB")
-
-    yield
-
-    # Cleanup
-    print("Shutting down...")
-    del model
-    del tokenizer
-    torch.cuda.empty_cache()
-
-app = FastAPI(
-    title="Nemotron-51B API",
-    description="OpenAI-compatible API for NVIDIA Nemotron-51B",
-    version="1.0.0",
-    lifespan=lifespan
-)
-
-# OpenAI-compatible request/response models
+# Request/Response models
 class Message(BaseModel):
     role: str
     content: str
@@ -79,10 +28,9 @@ class Message(BaseModel):
 class ChatCompletionRequest(BaseModel):
     model: str
     messages: List[Message]
-    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
-    max_tokens: Optional[int] = Field(default=2048, ge=1, le=8192)
-    top_p: float = Field(default=0.9, ge=0.0, le=1.0)
-    stream: bool = False
+    temperature: float = 0.7
+    max_tokens: int = 2048
+    top_p: float = 0.9
 
 class ChatCompletionChoice(BaseModel):
     index: int
@@ -102,90 +50,61 @@ class ChatCompletionResponse(BaseModel):
     choices: List[ChatCompletionChoice]
     usage: Usage
 
+app = FastAPI(title="Nemotron-51B API")
+
+@app.on_event("startup")
+async def load_model():
+    global model
+    print("Loading Nemotron-51B with NeMo...")
+
+    # Load from HuggingFace
+    model = MegatronGPTModel.from_pretrained("nvidia/Llama-3.1-Nemotron-51B-Instruct")
+    model.eval()
+
+    print("Model loaded successfully!")
+
 @app.get("/health")
-async def health_check():
-    """Health check endpoint"""
+async def health():
     if model is None:
         raise HTTPException(status_code=503, detail="Model not loaded")
-    return {"status": "healthy", "model": "nvidia/Llama-3.1-Nemotron-51B-Instruct"}
-
-@app.get("/v1/models")
-async def list_models():
-    """List available models (OpenAI-compatible)"""
-    return {
-        "object": "list",
-        "data": [
-            {
-                "id": "nvidia/Llama-3.1-Nemotron-51B-Instruct",
-                "object": "model",
-                "created": int(time.time()),
-                "owned_by": "nvidia"
-            }
-        ]
-    }
+    return {"status": "healthy"}
 
 @app.post("/v1/chat/completions")
 async def chat_completions(request: ChatCompletionRequest) -> ChatCompletionResponse:
-    """OpenAI-compatible chat completions endpoint"""
-
-    if model is None or tokenizer is None:
+    if model is None:
         raise HTTPException(status_code=503, detail="Model not loaded")
 
-    if request.stream:
-        raise HTTPException(status_code=400, detail="Streaming not yet supported")
+    # Build prompt
+    prompt = "\n".join([f"{msg.role}: {msg.content}" for msg in request.messages])
+    prompt += "\nassistant:"
 
-    try:
-        # Format messages using chat template
-        prompt = tokenizer.apply_chat_template(
-            [{"role": msg.role, "content": msg.content} for msg in request.messages],
-            tokenize=False,
-            add_generation_prompt=True
-        )
+    # Generate
+    length_params = LengthParam(max_length=request.max_tokens)
+    sampling_params = SamplingParam(
+        temperature=request.temperature,
+        top_p=request.top_p
+    )
 
-        # Tokenize input
-        inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
-        prompt_tokens = inputs.input_ids.shape[1]
+    output = model.generate([prompt], length_params=length_params, sampling_params=sampling_params)
+    response_text = output[0]
 
-        # Generate response
-        with torch.no_grad():
-            outputs = model.generate(
-                **inputs,
-                max_new_tokens=request.max_tokens,
-                temperature=request.temperature,
-                top_p=request.top_p,
-                do_sample=request.temperature > 0,
-                pad_token_id=tokenizer.eos_token_id,
-                eos_token_id=tokenizer.eos_token_id
+    return ChatCompletionResponse(
+        id=f"chatcmpl-{int(time.time())}",
+        created=int(time.time()),
+        model=request.model,
+        choices=[
+            ChatCompletionChoice(
+                index=0,
+                message=Message(role="assistant", content=response_text),
+                finish_reason="stop"
             )
-
-        # Decode response (only the generated part)
-        generated_ids = outputs[0][prompt_tokens:]
-        response_text = tokenizer.decode(generated_ids, skip_special_tokens=True)
-        completion_tokens = len(generated_ids)
-
-        # Build OpenAI-compatible response
-        return ChatCompletionResponse(
-            id=f"chatcmpl-{int(time.time())}",
-            created=int(time.time()),
-            model=request.model,
-            choices=[
-                ChatCompletionChoice(
-                    index=0,
-                    message=Message(role="assistant", content=response_text),
-                    finish_reason="stop"
-                )
-            ],
-            usage=Usage(
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-                total_tokens=prompt_tokens + completion_tokens
-            )
+        ],
+        usage=Usage(
+            prompt_tokens=len(prompt.split()),
+            completion_tokens=len(response_text.split()),
+            total_tokens=len(prompt.split()) + len(response_text.split())
         )
-
-    except Exception as e:
-        print(f"Error during generation: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    )
 
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
