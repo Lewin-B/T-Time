@@ -22,7 +22,6 @@
   "dependencies": {
     "@auth/drizzle-adapter": "^1.7.2",
     "@google/generative-ai": "^0.21.0",
-    "@huggingface/transformers": "^3.7.6",
     "@pinecone-database/pinecone": "^2.0.1",
     "postgres": "^3.4.5",
     "@radix-ui/react-slot": "^1.2.4",

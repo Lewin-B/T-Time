@@ -3,11 +3,7 @@ import { createTRPCRouter, publicProcedure } from "../trpc";
 import { env } from "~/env";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Pinecone } from "@pinecone-database/pinecone";
-import { pipeline, env as env2 } from "@huggingface/transformers";
 import { TRPCError } from "@trpc/server";
-
-env2.allowLocalModels = true;
-env2.allowRemoteModels = true;
 
 // Pinecone
 const pc = new Pinecone({
@@ -19,44 +15,68 @@ export const index = pc.index(env.PINECONE_INDEX_NAME ?? "");
 const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY ?? "");
 export const gemini = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-// Initialize embedding model (e5-base-v2)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let embeddingPipeline: any = null;
-const getEmbeddingModel = async () => {
-  try {
-    if (embeddingPipeline === null) {
-      embeddingPipeline = await pipeline(
-        "feature-extraction",
-        "Xenova/e5-base-v2",
+// Generate embedding using remote VPS embedding service (e5-base-v2 model)
+async function generateEmbedding(text: string): Promise<number[]> {
+  const EMBEDDING_SERVICE_URL = env.EMBEDDING_SERVICE_URL ?? "http://24.199.99.112:8000";
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY = 1000; // 1 second
+  const TIMEOUT = 30000; // 30 seconds
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), TIMEOUT);
+
+      const response = await fetch(`${EMBEDDING_SERVICE_URL}/embed`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = (await response.json()) as {
+        embedding: number[];
+        dimension: number;
+        model: string;
+      };
+
+      return data.embedding;
+    } catch (error) {
+      const isLastAttempt = attempt === MAX_RETRIES;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      console.error(
+        `Embedding service attempt ${attempt}/${MAX_RETRIES} failed:`,
+        errorMessage
+      );
+
+      if (isLastAttempt) {
+        throw new TRPCError({
+          message: `Failed to generate embedding after ${MAX_RETRIES} attempts: ${errorMessage}`,
+          code: "INTERNAL_SERVER_ERROR",
+        });
+      }
+
+      // Exponential backoff: wait longer between each retry
+      await new Promise((resolve) =>
+        setTimeout(resolve, RETRY_DELAY * attempt)
       );
     }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return embeddingPipeline;
-  } catch {
-    throw new TRPCError({
-      message: "Failed to initialize model",
-      code: "INTERNAL_SERVER_ERROR",
-    });
   }
-};
 
-// Generate embedding using e5-base-v2 model
-async function generateEmbedding(text: string): Promise<number[]> {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const model = await getEmbeddingModel();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    const output = (await model(text, {
-      pooling: "mean",
-      normalize: true,
-    })) as { data: Float32Array | Float64Array | number[] };
-    return Array.from(output.data);
-  } catch (error) {
-    throw new TRPCError({
-      message: `Failed to generate embedding: ${error instanceof Error ? error.message : String(error)}`,
-      code: "INTERNAL_SERVER_ERROR",
-    });
-  }
+  // TypeScript requires a return here, but we'll never reach this due to the throw above
+  throw new TRPCError({
+    message: "Failed to generate embedding",
+    code: "INTERNAL_SERVER_ERROR",
+  });
 }
 
 interface PineconeMatch {
