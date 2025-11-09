@@ -33,7 +33,7 @@ async def chat(request: ChatRequest):
         response = requests.post(
             OLLAMA_URL,
             json={
-                "model": "nemotron",
+                "model": "nemotron-mini",
                 "prompt": request.prompt,
                 "stream": False,
                 "options": {
