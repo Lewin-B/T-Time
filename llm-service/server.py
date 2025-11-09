@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from huggingface_hub import login
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
@@ -22,16 +23,23 @@ async def lifespan(app: FastAPI):
     """Load model on startup, cleanup on shutdown"""
     global model, tokenizer
 
+    # Login to Hugging Face
+    hf_token = os.getenv("HUGGING_FACE_HUB_TOKEN")
+    if hf_token:
+        print("Logging in to Hugging Face...")
+        login(token=hf_token)
+    else:
+        print("WARNING: No HF token found, may not be able to download gated models")
+
     print("Loading Nemotron-51B model...")
     model_name = "nvidia/Llama-3.1-Nemotron-51B-Instruct"
 
-    # Load tokenizer with force_download to bypass cache corruption
+    # Load tokenizer
     print("Loading tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
         trust_remote_code=True,
-        use_fast=True,
-        force_download=True  # Force fresh download to avoid cache corruption
+        use_fast=True
     )
 
     # Load model with BF16 precision
@@ -41,8 +49,7 @@ async def lifespan(app: FastAPI):
         torch_dtype=torch.bfloat16,
         device_map="auto",  # Automatically distribute across GPUs
         trust_remote_code=True,
-        low_cpu_mem_usage=True,
-        force_download=True  # Force fresh download to avoid cache corruption
+        low_cpu_mem_usage=True
     )
 
     model.eval()  # Set to evaluation mode
