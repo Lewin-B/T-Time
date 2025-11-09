@@ -21,6 +21,7 @@ export const env = createEnv({
     PINECONE_INDEX_NAME: z.string().optional(),
     PINECONE_ENVIRONMENT: z.string().optional(),
     GEMINI_API_KEY: z.string().optional(),
+    FLASK_SERVER_URL: z.string().url().optional().default("http://localhost:5000"),
   },
 
   /**
@@ -47,6 +48,7 @@ export const env = createEnv({
     PINECONE_INDEX_NAME: process.env.PINECONE_INDEX_NAME,
     PINECONE_ENVIRONMENT: process.env.PINECONE_ENVIRONMENT,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    FLASK_SERVER_URL: process.env.FLASK_SERVER_URL,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

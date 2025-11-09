@@ -12,3 +12,4 @@ env/
 
 # Deployment folder
 botdas/deployment/
+server/__pycache__

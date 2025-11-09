@@ -3,11 +3,7 @@ import { createTRPCRouter, publicProcedure } from "../trpc";
 import { env } from "~/env";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Pinecone } from "@pinecone-database/pinecone";
-import { pipeline, env as env2 } from "@huggingface/transformers";
 import { TRPCError } from "@trpc/server";
-
-env2.allowLocalModels = true;
-env2.allowRemoteModels = true;
 
 // Pinecone
 const pc = new Pinecone({
@@ -19,38 +15,31 @@ export const index = pc.index(env.PINECONE_INDEX_NAME ?? "");
 const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY ?? "");
 export const gemini = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-// Initialize embedding model (e5-base-v2)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let embeddingPipeline: any = null;
-const getEmbeddingModel = async () => {
-  try {
-    if (embeddingPipeline === null) {
-      embeddingPipeline = await pipeline(
-        "feature-extraction",
-        "Xenova/e5-base-v2",
-      );
-    }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return embeddingPipeline;
-  } catch {
-    throw new TRPCError({
-      message: "Failed to initialize model",
-      code: "INTERNAL_SERVER_ERROR",
-    });
-  }
-};
-
-// Generate embedding using e5-base-v2 model
+// Generate embedding using Flask server endpoint
 async function generateEmbedding(text: string): Promise<number[]> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const model = await getEmbeddingModel();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    const output = (await model(text, {
-      pooling: "mean",
-      normalize: true,
-    })) as { data: Float32Array | Float64Array | number[] };
-    return Array.from(output.data);
+    const flaskServerUrl = env.FLASK_SERVER_URL ?? "http://localhost:5000";
+    const response = await fetch(`${flaskServerUrl}/embed`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ text }),
+    });
+
+    console.log("Response; ", response);
+
+    if (!response.ok) {
+      const errorData = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      throw new Error(
+        errorData.error ?? `Flask server returned ${response.status}`,
+      );
+    }
+
+    const data = (await response.json()) as { embedding: number[] };
+    return data.embedding;
   } catch (error) {
     throw new TRPCError({
       message: `Failed to generate embedding: ${error instanceof Error ? error.message : String(error)}`,
