@@ -13,9 +13,12 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 
 WORKDIR /app
 
+# Upgrade pip first
+RUN python3 -m pip install --upgrade pip
+
 # Copy requirements and install dependencies
 COPY requirements.txt .
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN python3 -m pip install --no-cache-dir -r requirements.txt
 
 # Copy server code
 COPY server.py .
