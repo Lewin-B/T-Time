@@ -25,12 +25,13 @@ async def lifespan(app: FastAPI):
     print("Loading Nemotron-51B model...")
     model_name = "nvidia/Llama-3.1-Nemotron-51B-Instruct"
 
-    # Load tokenizer
+    # Load tokenizer with force_download to bypass cache corruption
     print("Loading tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
         trust_remote_code=True,
-        use_fast=True
+        use_fast=True,
+        force_download=True  # Force fresh download to avoid cache corruption
     )
 
     # Load model with BF16 precision
@@ -40,7 +41,8 @@ async def lifespan(app: FastAPI):
         torch_dtype=torch.bfloat16,
         device_map="auto",  # Automatically distribute across GPUs
         trust_remote_code=True,
-        low_cpu_mem_usage=True
+        low_cpu_mem_usage=True,
+        force_download=True  # Force fresh download to avoid cache corruption
     )
 
     model.eval()  # Set to evaluation mode
