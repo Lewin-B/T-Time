@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   nemotron-51b:
-    image: vllm/vllm-openai:latest
+    image: vllm/vllm-openai:v0.6.3.post1
     container_name: nemotron-51b
     restart: unless-stopped
 
@@ -32,7 +32,7 @@ services:
       - CUDA_VISIBLE_DEVICES=0
 
     # vLLM startup command for 80GB A100 SXM4 GPU
-    # Nemotron-51B-Instruct (NVIDIA's optimized Llama 3.1)
+    # Nemotron-51B-Instruct with older vLLM version (v0.6.3.post1)
     # Perfect fit: ~30GB VRAM usage, 50GB headroom
     command: >
       --model nvidia/Llama-3.1-Nemotron-51B-Instruct
