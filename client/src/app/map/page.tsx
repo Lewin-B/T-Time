@@ -13,13 +13,13 @@ export default function MapPage() {
   // Each marker becomes a dot with start and end at the same location
   const dots = markers.map(({ name, coordinates }) => ({
     start: {
-      lat: coordinates[1] - 13, // latitude (second element)
-      lng: coordinates[0], // longitude (first element)
+      lat: coordinates[1] ?? 50 - 13, // latitude (second element)
+      lng: coordinates[0] ?? 50, // longitude (first element)
       label: name,
     },
     end: {
-      lat: coordinates[1] - 13, // same location
-      lng: coordinates[0], // same location
+      lat: coordinates[1] ?? 50 - 13, // same location
+      lng: coordinates[0] ?? 50, // same location
       label: name,
     },
   }));

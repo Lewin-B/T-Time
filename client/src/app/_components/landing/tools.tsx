@@ -28,7 +28,7 @@ export default function Tools() {
             Powered by Industry Leaders
           </h2>
           <p className="text-muted-foreground mx-auto max-w-2xl text-lg md:text-xl">
-            Built with cutting-edge AI technologies from the world's most
+            Built with cutting-edge AI technologies from the world&apos;s most
             innovative companies
           </p>
         </div>
