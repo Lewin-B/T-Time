@@ -1,0 +1,17 @@
+# MCP
+pandas==2.1.4
+
+# Reddit API
+praw==7.7.1
+
+# Pinecone vector database
+pinecone-client==3.0.0
+
+# ML/NLP models
+torch==2.1.0
+transformers==4.36.0
+numpy<2.0.0
+
+# Utilities
+python-dotenv==1.0.0
+tqdm==4.66.1

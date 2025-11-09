@@ -12,3 +12,6 @@ env/
 
 # Deployment folder
 botdas/deployment/
+
+# Claude
+CLAUDE.md
