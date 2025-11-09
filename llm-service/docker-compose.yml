@@ -6,7 +6,6 @@ services:
     container_name: nemotron-51b
     restart: unless-stopped
 
-    # GPU configuration - use all available GPUs
     deploy:
       resources:
         reservations:
@@ -15,29 +14,16 @@ services:
               count: all
               capabilities: [gpu]
 
-    # Port mapping - expose OpenAI-compatible API
     ports:
-      - "8001:8000"
+      - "8001:8001"
 
-    # Volume mounts for model caching
     volumes:
       - huggingface_cache:/root/.cache/huggingface
 
-    # Shared memory size for tensor operations
     shm_size: '32gb'
 
-    # Environment variables
     environment:
       - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN}
-      - HF_HOME=/root/.cache/huggingface
-
-    # Health check
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 300s
 
 volumes:
   huggingface_cache:
